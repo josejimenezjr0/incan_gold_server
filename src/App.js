@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from "react"
-import io from "socket.io-client"
-const URL = 'http://127.0.0.1:4001'
 import Home from './components/Home'
 
 const App = () => {
+  const [ newGame, setNewGame ] = useState(false)
 
-  const socket = io(URL)
-
-  const handleClick = () => {
-    socket.emit("hello", new Date())
-  }
+  const handleNew = () => setNewGame(true)
 
   return (
-    <Home socket={ socket } handleClick={ handleClick }/>
+    <div>
+      <button type="button" onClick={ handleNew }>New Game</button>
+      { newGame && <Home /> }
+    </div>
   )
 }
 
