@@ -2,10 +2,13 @@ const path = require('path')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 
 const config = {
-  entry: './src/index.js',
+  entry: {
+    main: './src/index.js'
+  },
 
   output: {
-    filename: 'build.js',
+    filename: '[name].bundle.js',
+    chunkFilename: '[name].bundle.js',
     path: path.resolve(__dirname, 'public')
   },
 
