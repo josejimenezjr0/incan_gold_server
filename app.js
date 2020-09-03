@@ -1,26 +1,40 @@
 require('dotenv').config()
-const app = require('express')()
+const path = require('path')
+const express = require('express')
+const jwt = require('jsonwebtoken')
+const bodyParser = require('body-parser')
+
+let games = []
+const tokenSecret = process.env.SECRET
+
+const app = express()
+
 const server = require('http').createServer(app)
 const io = require('socket.io')(server)
 
-let games = []
+app.use(express.static('../client/public'))
+app.get('/games', (req, res) => res.send(games))
+// app.get('/*', (req, res) => res.sendFile('index.html', { root: path.join(__dirname, '../client/public/') }))
+app.get('/*', (req, res) => res.redirect('/'))
+
+app.use(bodyParser.json());
 
 io.on("connect", (socket) => {
-  console.log("New client connected")
+  console.log(`New Client: ${socket.id} connected`)
 
   socket.on("create", async ({ name, players }) => {
     console.log('create: ', ({ name, players }))
     console.log('games: ', games)
     const room = Math.random().toString(36).substring(2, 6)
-    if (games.filter(({ code }) => code === room).length === 0) {
-      const newGame = { code: room, players: [{ name: name, id: socket.id }], size: players }
+    if (!games.find(({ code }) => code === room)) {
+      const accessToken = jwt.sign({ name: name, code: room }, tokenSecret)
+      console.log('accessToken: ', accessToken)
+      const newGame = { code: room, players: [{ name: name, id: socket.id, accessToken: accessToken }], size: players }
       games = [...games, newGame]
       console.log('games: ', games)
       socket.join(room)
       io.to(room).emit("update", newGame )
-    } else {
-      console.log('Room name already exists')
-    }
+    } else console.log('Room name already exists')
     
   })
 
@@ -31,16 +45,17 @@ io.on("connect", (socket) => {
   socket.on("join", async ({ name, code: room }) => {
     console.log('join:', ({ name, room }))
     console.log('games: ', games)
-    let newJoin
-    const findGame = games.filter(({ code }) => code === room)
-    if(findGame) {
-      newJoin = { ...findGame[0], players: [...findGame[0].players, { name: name, id: socket.id }] }
-      games = games.filter(({ code }) => code != room)
-      games = [...games, newJoin]
-    }
-    console.log('games: ', games)
-    socket.join(room)
-    io.to(room).emit("update", newJoin )
+    const gamesIndex = games.findIndex(({ code }) => code === room)
+    if(gamesIndex !== -1) {
+      let newGames = [...games]
+      newGames[gamesIndex] = { ...newGames[gamesIndex], players: [...newGames[gamesIndex].players, { name: name, id: socket.id }] }
+      // games = [ ...games, games[gamesIndex] = { ...games[gamesIndex], players: [...games[gamesIndex].players, { name: name, id: socket.id }] }]
+      games = newGames
+      console.log('games: ', games)
+      socket.join(room)
+      io.to(room).emit("update", games[gamesIndex] )
+    } else console.log('Game not found')
+
   })
 })
 
