@@ -4,7 +4,6 @@ import Nav from './components/Nav'
 import Home from './components/Home'
 import New from './components/New'
 import Join from './components/Join'
-
 const Lobby = lazy(() => import('./components/Lobby') )
 
 
@@ -20,7 +19,6 @@ const App = () => {
           <Suspense fallback={<div>Loading</div>}>
             <Lobby />
           </Suspense>
-          
         </Route>
       </Switch>
     </Router>

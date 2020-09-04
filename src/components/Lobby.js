@@ -1,45 +1,39 @@
 import React, { useState, useEffect } from 'react'
-import { useLocation, useHistory } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 import io from "socket.io-client"
-const URL = 'http://127.0.0.1:4001'
-const socket = io(URL)
+const socket = io()
 
 const Lobby = () => {
   const location = useLocation()
-  const game = location.state && location.state.game
-
+  const locationGame = location.state && location.state.game
+  const storedGame = localStorage.getItem('incanGold')
   const [lobby, setLobby ] = useState({ code: '', players: [], size: 3 })
 
-  const history = useHistory()
-
+  socket.on("update", game => {
+    setLobby(game)
+    localStorage.setItem('incanGold', JSON.stringify(game))
+  })
+  
   useEffect(() => {
-    if(!game) history.push('/')
-
-    const storedGame = localStorage.getItem('incanGold')
-
     if(!storedGame) {
-      game.newGame && socket.emit("create", game)
-      !game.newGame && socket.emit("join", game)
-
-      socket.on("update", game => {
-        console.log('game: ', game)
-        setLobby(game)
-        localStorage.setItem('incanGold', JSON.stringify(game))
-      })
+      locationGame.newGame && socket.emit("create", locationGame)
+      !locationGame.newGame && socket.emit("join", locationGame)
     } else {
       setLobby(JSON.parse(storedGame))
     }
-    
 
     return () => {
       socket.disconnect()
     }
   }, [])
 
+  const clearGame = () => localStorage.clear()
+
   const lobbyPlayers = lobby.players.map((player, ind) => (<li key={ ind }>{ player.name }</li>))
 
   return (
-    <div>
+    <div className="p-8 flex-col flex-wrap items-center justify-center">
+    <Link className="inline-block mt-2 p-1 mx-auto bg-green-300" to="/" onClick={clearGame} >Clear Game</Link>
       <div>Code: { lobby.code }</div>
       <ul>
         { lobbyPlayers }
