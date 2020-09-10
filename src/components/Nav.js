@@ -5,7 +5,7 @@ const Nav = () => {
   return (
     <div className="flex justify-between bg-red-300">
       <div><Link to="/">Home</Link></div>
-      <div className="text-lg text-center">Incan Gold</div>
+      <div className="text-lg text-center"><Link to="/admin">Incan Gold</Link></div>
       <div></div>
     </div>
   )

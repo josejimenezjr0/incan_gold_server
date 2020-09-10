@@ -7,9 +7,11 @@ const Lobby = () => {
   const location = useLocation()
   const locationGame = location.state && location.state.game
   const storedGame = localStorage.getItem('incanGold')
-  const [lobby, setLobby ] = useState({ code: '', players: [], size: 3 })
+  const [lobby, setLobby ] = useState({ code: '', players: [], size: 3, })
 
   socket.on("update", game => {
+    console.log('storedGame: ', storedGame);
+    game.players.length === 1 ? game.uuid = game.players[0].id : game.uuid = storedGame.uuid
     setLobby(game)
     localStorage.setItem('incanGold', JSON.stringify(game))
   })
@@ -20,6 +22,9 @@ const Lobby = () => {
       !locationGame.newGame && socket.emit("join", locationGame)
     } else {
       setLobby(JSON.parse(storedGame))
+      socket.emit("rejoin", storedGame)
+
+      console.log('rejoin locationGame: ', storedGame);
     }
 
     return () => {
