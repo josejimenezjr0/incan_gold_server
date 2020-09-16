@@ -1,41 +1,54 @@
 require('dotenv').config()
-const path = require('path')
 const express = require('express')
-const jwt = require('jsonwebtoken')
-const bodyParser = require('body-parser')
+const { v4: uuidv4 } = require('uuid')
 
-let games = []
-const tokenSecret = process.env.SECRET
 
 const app = express()
-
 const server = require('http').createServer(app)
 const io = require('socket.io')(server)
 
+let games = {}
+let players = {}
+
 app.use(express.static('../client/public'))
-app.get('/games', (req, res) => res.send(games))
-// app.get('/*', (req, res) => res.sendFile('index.html', { root: path.join(__dirname, '../client/public/') }))
+app.get('/games', (req, res) => {
+  res.send({ games, players })
+})
 app.get('/*', (req, res) => res.redirect('/'))
 
-app.use(bodyParser.json());
+io.use((socket, next) => {
+  if(socket.handshake.query.reconnect) {
+    console.log(`reconnect`, socket.handshake.query.reconnect)
+    socket.uuid = socket.handshake.query.reconnect
+    console.log('socket.uuid: ', socket.uuid);
+    return next()
+  } else return next();
+})
 
 io.on("connect", (socket) => {
   console.log(`New Client: ${socket.id} connected`)
 
-  socket.on("create", async ({ name, players }) => {
-    console.log('create: ', ({ name, players }))
-    console.log('games: ', games)
+  if(socket.uuid) {
+    console.log('returning player')
+    players[socket.uuid].socket = socket.id
+  }
+
+  socket.on("create", async ({ name, playerNum }) => {
+    const uuid = uuidv4()
+    socket.emit("uuid",  uuid )
     const room = Math.random().toString(36).substring(2, 6)
-    if (!games.find(({ code }) => code === room)) {
-      const accessToken = jwt.sign({ name: name, code: room }, tokenSecret)
-      console.log('accessToken: ', accessToken)
-      const newGame = { code: room, players: [{ name: name, id: socket.id, accessToken: accessToken }], size: players }
-      games = [...games, newGame]
-      console.log('games: ', games)
+
+    //verify same room name doesn't already exist
+    if (!games.hasOwnProperty(room)) {
+      //add player and create game
+      players[uuid] = { name: name, room: room, socket: socket.id, host: true }
+      games[room] = { room, players: [{ name: name, uuid: uuid }], size: playerNum }
+
+      //add socket to created game and send back game info
       socket.join(room)
-      io.to(room).emit("update", newGame )
+      socket.emit("update", games[room])
+      console.log('CREATE', games)
     } else console.log('Room name already exists')
-    
   })
 
   socket.on("disconnect", () => {
@@ -43,19 +56,23 @@ io.on("connect", (socket) => {
   })
 
   socket.on("join", async ({ name, code: room }) => {
-    console.log('join:', ({ name, room }))
-    console.log('games: ', games)
-    const gamesIndex = games.findIndex(({ code }) => code === room)
-    if(gamesIndex !== -1) {
-      let newGames = [...games]
-      newGames[gamesIndex] = { ...newGames[gamesIndex], players: [...newGames[gamesIndex].players, { name: name, id: socket.id }] }
-      // games = [ ...games, games[gamesIndex] = { ...games[gamesIndex], players: [...games[gamesIndex].players, { name: name, id: socket.id }] }]
-      games = newGames
-      console.log('games: ', games)
+    console.log('received join')
+    const uuid = uuidv4()
+    socket.emit("uuid",  uuid )
+
+    if(games[room]) {
+      players[uuid] = { name: name, room: room, socket: socket.id, host: false }
+      games[room].players = [ ...games[room].players, { name: name, uuid: uuid } ]
+      console.log('JOIN games: ', games)
+      console.log('JOIN players: ', players)
       socket.join(room)
-      io.to(room).emit("update", games[gamesIndex] )
+      io.to(room).emit("update", games[room] )
     } else console.log('Game not found')
 
+  })
+
+  socket.on("disconnected", data => {
+    console.log('disconnected')
   })
 })
 
