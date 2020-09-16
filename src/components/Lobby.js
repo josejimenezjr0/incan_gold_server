@@ -1,45 +1,74 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link } from 'react-router-dom'
-import io from "socket.io-client"
-const socket = io()
+import io from '../Socket'
+import db from '../db'
 
 const Lobby = () => {
   const location = useLocation()
   const locationGame = location.state && location.state.game
-  const storedGame = localStorage.getItem('incanGold')
-  const [lobby, setLobby ] = useState({ code: '', players: [], size: 3, })
+  const locationUuid = location.state && location.state.uuid
+  const [lobby, setLobby] = useState({ room: '', players: [], size: 3 })
+  const [uuid, setUuid] = useState(null)
 
-  socket.on("update", game => {
-    console.log('storedGame: ', storedGame);
-    game.players.length === 1 ? game.uuid = game.players[0].id : game.uuid = storedGame.uuid
-    setLobby(game)
-    localStorage.setItem('incanGold', JSON.stringify(game))
-  })
+  const updateGame = async game => {
+    try {
+      const gameUpdate = await db.game.put(game)
+      setLobby(game)
+    } catch (error) {
+    }  
+  }
+
+  const saveUuid = async uuid => {
+    try {
+      const uuidUpdate = await db.uuid.put({uuid: uuid})
+      setUuid(uuid)
+    } catch (error) {
+    }  
+  }
+
+  const loadSave = async () => {
+    try {
+      const storedUuid = await db.table('uuid').toArray()
+      const storedGame = await db.table('game').toArray()
+      if(storedUuid[0] && storedGame[0]) {
+        setUuid(storedUuid[0].uuid)
+        setLobby(storedGame[0])
+      } else {
+      }
+    } catch (error) {
+    } 
+  }
   
   useEffect(() => {
-    if(!storedGame) {
-      locationGame.newGame && socket.emit("create", locationGame)
-      !locationGame.newGame && socket.emit("join", locationGame)
-    } else {
-      setLobby(JSON.parse(storedGame))
-      socket.emit("rejoin", storedGame)
+    loadSave()
 
-      console.log('rejoin locationGame: ', storedGame);
-    }
+    io.playerInit(locationGame, locationUuid)
+
+    io.playerUuid((uuid) => {
+      saveUuid(uuid)
+    })
+
+    io.gameUpdate(update => {
+      updateGame(update)
+    })
 
     return () => {
-      socket.disconnect()
+      io.disconnect()
     }
   }, [])
 
-  const clearGame = () => localStorage.clear()
+  const clearGame = () => {
+    db.game.clear()
+    db.uuid.clear()
+  }
 
-  const lobbyPlayers = lobby.players.map((player, ind) => (<li key={ ind }>{ player.name }</li>))
+  const lobbyPlayers = lobby.players.map((player, ind) => (<li key={ ind } className={ player.uuid === uuid ? 'bg-blue-300' : ''}>{ player.name }</li>))
 
   return (
     <div className="p-8 flex-col flex-wrap items-center justify-center">
-    <Link className="inline-block mt-2 p-1 mx-auto bg-green-300" to="/" onClick={clearGame} >Clear Game</Link>
-      <div>Code: { lobby.code }</div>
+    <Link className="inline-block mt-2 p-1 mx-auto bg-green-300" to="/" onClick={ clearGame } >Clear Game</Link>
+      <div>Code: { lobby.room }</div>
+      <div>uuid: { uuid }</div>
       <ul>
         { lobbyPlayers }
       </ul>

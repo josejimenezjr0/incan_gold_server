@@ -5,8 +5,7 @@ import Home from './components/Home'
 import New from './components/New'
 import Join from './components/Join'
 import Admin from './components/Admin'
-const Lobby = lazy(() => import('./components/Lobby') )
-
+import Lobby from './components/Lobby'
 
 const App = () => {
   return (
@@ -18,11 +17,7 @@ const App = () => {
           <Route path="/admin"><Admin /></Route>
           <Route path="/new"><New /></Route>
           <Route path="/join"><Join /></Route>
-          <Route path="/lobby">
-            <Suspense fallback={<div>Loading</div>}>
-              <Lobby />
-            </Suspense>
-          </Route>
+          <Route path="/lobby"><Lobby /></Route>
         </Switch>
       </Router>
     </div>

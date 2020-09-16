@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 const Join = () => {
-  const [ game, setGame ] = useState({ name: '', code: '', newGame: false })
+  const [ game, setGame ] = useState({ name: '', code: '', init: true, join: true })
 
   const handleInput = e => {
     const { target: { name, value } } = e

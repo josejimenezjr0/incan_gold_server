@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 const New = () => {
-  const [ game, setGame ] = useState({ name: '', players: 3, newGame: true })
+  const [ game, setGame ] = useState({ name: '', playerNum: 3, init: true, join: false })
 
   const handleInput = e => {
     const { target: { name, value } } = e
@@ -22,7 +22,7 @@ const New = () => {
         </div>
         <div>
           <p className="inline-block pr-4">Players:</p>
-          <input type="number" name="players" placeholder="3" value={ game.players } onChange={ handleInput }/>
+          <input type="number" name="playerNum" placeholder="3" value={ game.playerNum } onChange={ handleInput }/>
         </div>
       </div>
       <Link className="inline-block mt-2 p-1 mx-auto bg-green-300" to={{ pathname: "/lobby", state: { game: game } }}>Make Game!</Link>
