@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import io from '../Socket'
 import db from '../db'
+import CenterBoard from './game/CenterBoard'
+import PlayerBoard from './game/PlayerBoard'
 
 const Lobby = () => {
   const location = useLocation()
@@ -62,16 +64,32 @@ const Lobby = () => {
     db.uuid.clear()
   }
 
-  const lobbyPlayers = lobby.players.map((player, ind) => (<li key={ ind } className={ player.uuid === uuid ? 'bg-blue-300' : ''}>{ player.name }</li>))
+  const lobbyPlayers = lobby.players.map((player, ind) => (<li key={ ind } className={ player.uuid === uuid ? 'bg-gray-300' : ''}>{ player.name }</li>))
 
   return (
-    <div className="p-8 flex-col flex-wrap items-center justify-center">
-    <Link className="inline-block mt-2 p-1 mx-auto bg-green-300" to="/" onClick={ clearGame } >Clear Game</Link>
-      <div>Code: { lobby.room }</div>
-      <div>uuid: { uuid }</div>
-      <ul>
-        { lobbyPlayers }
-      </ul>
+    <div className="p-2 flex flex-col flex-wrap">
+      {/*///// admin /////*/}
+      <div className="flex p-1 bg-yellow-200 mr-auto">
+        <button className="inline-block p-1 bg-gray-300" to="/" onClick={ clearGame } >Clear Game</button>
+        <div className="p-1">Code: { lobby.room }</div>
+        <div className="p-1">uuid: { uuid && uuid.substring(0, 4) }</div>
+      </div>
+
+      {/*///// game /////*/}
+      <div className="p-1 flex flex-col flex-wrap justify-center bg-blue-100">
+        <div className="text-lg text-center">Game</div>
+
+        {/*///// player list /////*/}
+        <ul className="flex flex-row justify-around">
+          { lobbyPlayers }
+        </ul>
+
+        {/*///// center board /////*/}
+        <CenterBoard />
+
+        {/*///// player board /////*/}
+        <PlayerBoard />
+      </div>
     </div>
   )
 }
