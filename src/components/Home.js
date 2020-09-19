@@ -8,8 +8,9 @@ const Home = () => {
     try {
       const storedUuid = await db.table('uuid').toArray()
       const storedGame = await db.table('game').toArray()
+      const storedPlayer = await db.table('player').toArray()
       if(storedUuid[0] && storedGame[0]) {
-        history.push({ pathname:'/lobby', state: { uuid: storedUuid[0].uuid, game: storedGame[0]} })
+        history.push({ pathname:'/lobby', state: { uuid: storedUuid[0].uuid, player: storedPlayer[0], game: storedGame[0]} })
       } else {
       }
     } catch (error) {

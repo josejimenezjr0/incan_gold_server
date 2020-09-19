@@ -11,11 +11,30 @@ const playerInit = (game, uuid) => {
 }
 
 const gameUpdate = handleUpdate => {
-  socket.on('update', update => handleUpdate(update))
+  socket.on('update', update => {
+    console.log(`gameUpdate`, update)
+    handleUpdate(update)
+  })
 }
 
 const playerUuid = uuidSet => {
   socket.on('uuid', uuid => uuidSet(uuid))
+}
+
+const playerUpdate = handlePlayerUpdate => {
+  socket.on('playerUpdate', update => {
+    console.log(`playerUpdate`, update)
+    handlePlayerUpdate(update)
+  })
+}
+
+const sendChoice = choice => {
+  console.log(`sendChoice`, choice)
+  socket.emit('choice', choice)
+}
+
+const gameReset = resetGame => {
+  socket.on('forceReset', () => resetGame())
 }
 
 const disconnect = () => socket.disconnect()
@@ -24,5 +43,8 @@ export default {
   playerInit,
   gameUpdate,
   playerUuid,
-  disconnect
+  disconnect,
+  gameReset,
+  playerUpdate,
+  sendChoice
 }

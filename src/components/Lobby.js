@@ -2,20 +2,40 @@ import React, { useState, useEffect } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import io from '../Socket'
 import db from '../db'
-import CenterBoard from './game/CenterBoard'
-import PlayerBoard from './game/PlayerBoard'
+import CenterBoard from './game/center/CenterBoard'
+import PlayerBoard from './game/player/PlayerBoard'
+import Round from './game/player/Round'
+import ChoiceBoard from './game/player/ChoiceBoard'
 
 const Lobby = () => {
   const location = useLocation()
-  const locationGame = location.state && location.state.game
   const locationUuid = location.state && location.state.uuid
-  const [lobby, setLobby] = useState({ room: '', players: [], size: 3 })
+  const locationGame = location.state && location.state.game
   const [uuid, setUuid] = useState(null)
-
+  const [lobby, setLobby] = useState({ room: '', players: [], size: 3, board: { round: 1, quest: [] }, deck: [] })
+  const [playerInfo, setPlayerInfo] = useState(
+    { name: '',
+      room: '',
+      socket: '',
+      host: false,
+      totalScore: 0,
+      roundScore: 0,
+      artifacts: [],
+      choiceMade: false,
+      choice: null })
+  
   const updateGame = async game => {
     try {
       const gameUpdate = await db.game.put(game)
       setLobby(game)
+    } catch (error) {
+    }  
+  }
+
+  const updatePlayer = async player => {
+    try {
+      const playerUpdate = await db.player.put(player)
+      setPlayerInfo(player)
     } catch (error) {
     }  
   }
@@ -40,6 +60,11 @@ const Lobby = () => {
     } catch (error) {
     } 
   }
+
+  const clearGame = () => {
+    db.game.clear()
+    db.uuid.clear()
+  }
   
   useEffect(() => {
     loadSave()
@@ -54,17 +79,32 @@ const Lobby = () => {
       updateGame(update)
     })
 
+    io.playerUpdate(update => {
+      updatePlayer(update)
+    })
+
+    io.gameReset(() => clearGame())
+
     return () => {
       io.disconnect()
     }
   }, [])
 
-  const clearGame = () => {
-    db.game.clear()
-    db.uuid.clear()
+  const playerChoice = ({ target: { name } }) => {
+    setPlayerInfo({ ...playerInfo, choice: name == 'torch', choiceMade: true })
+    io.sendChoice({ uuid: uuid, choice: name == 'torch' })
   }
 
-  const lobbyPlayers = lobby.players.map((player, ind) => (<li key={ ind } className={ player.uuid === uuid ? 'bg-gray-300' : ''}>{ player.name }</li>))
+  const lobbyPlayers = lobby.players.map((player, ind) =>
+    (<li key={ ind } className={`text-center p-2 ${ player.online ? '' : 'bg-red-600'}`}>
+      <div className={`py-1 px-2 ${ player.choiceMade ? 'bg-green-400 font-bold' : 'bg-yellow-400'}`}>
+        { player.name }
+      </div>
+      <div className="flex flex-col justify-center">
+        <ChoiceBoard player={ player } playerChoice='opponent'/>
+        { player.online ? <Round score={ player.roundScore } artifacts={ player.artifacts}/> : <div className="text-xl transform rotate-90">:(</div> }
+      </div>
+    </li>))
 
   return (
     <div className="p-2 flex flex-col flex-wrap">
@@ -85,10 +125,10 @@ const Lobby = () => {
         </ul>
 
         {/*///// center board /////*/}
-        <CenterBoard />
+        <CenterBoard board={ lobby.board }/>
 
         {/*///// player board /////*/}
-        <PlayerBoard />
+        <PlayerBoard player={ playerInfo } playerChoice={ playerChoice }/>
       </div>
     </div>
   )
