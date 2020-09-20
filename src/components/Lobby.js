@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useLocation, Link } from 'react-router-dom'
+import React, { useState, useEffect, } from 'react'
+import { useLocation, useHistory } from 'react-router-dom'
 import io from '../Socket'
 import db from '../db'
 import CenterBoard from './game/center/CenterBoard'
@@ -9,6 +9,7 @@ import ChoiceBoard from './game/player/ChoiceBoard'
 
 const Lobby = () => {
   const location = useLocation()
+  const history = useHistory()
   const locationUuid = location.state && location.state.uuid
   const locationGame = location.state && location.state.game
   const [uuid, setUuid] = useState(null)
@@ -64,6 +65,7 @@ const Lobby = () => {
   const clearGame = () => {
     db.game.clear()
     db.uuid.clear()
+    history.push('/')
   }
   
   useEffect(() => {
