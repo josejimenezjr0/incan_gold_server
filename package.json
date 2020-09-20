@@ -18,6 +18,7 @@
     "uuid": "^8.3.0"
   },
   "devDependencies": {
+    "chalk": "^4.1.0",
     "jest": "^26.4.2",
     "socket.io-client": "^2.3.0"
   }
