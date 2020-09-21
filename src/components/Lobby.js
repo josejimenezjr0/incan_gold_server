@@ -6,6 +6,7 @@ import CenterBoard from './game/center/CenterBoard'
 import PlayerBoard from './game/player/PlayerBoard'
 import Round from './game/player/Round'
 import ChoiceBoard from './game/player/ChoiceBoard'
+import LobbyWait from './game/player/LobbyWait'
 
 const Lobby = () => {
   const location = useLocation()
@@ -14,28 +15,20 @@ const Lobby = () => {
   const locationGame = location.state && location.state.game
   const [uuid, setUuid] = useState(null)
   const [lobby, setLobby] = useState({ room: '', players: [], size: 3, board: { round: 1, quest: [] }, deck: [] })
-  const [playerInfo, setPlayerInfo] = useState(
-    { name: '',
-      room: '',
-      socket: '',
-      host: false,
-      totalScore: 0,
-      roundScore: 0,
-      artifacts: [],
-      choiceMade: false,
-      choice: null })
+  const [playerInfo, setPlayerInfo] = useState({ name: '', room: '', host: false, totalScore: 0, roundScore: 0, artifacts: [], choiceMade: false, choice: null })
   
   const updateGame = async game => {
     try {
-      const gameUpdate = await db.game.put(game)
+      await db.game.put(game)
       setLobby(game)
     } catch (error) {
     }  
   }
 
   const updatePlayer = async player => {
+    console.log('updatePlayer: ', player);
     try {
-      const playerUpdate = await db.player.put(player)
+      await db.player.put(player, uuid)
       setPlayerInfo(player)
     } catch (error) {
     }  
@@ -43,7 +36,7 @@ const Lobby = () => {
 
   const saveUuid = async uuid => {
     try {
-      const uuidUpdate = await db.uuid.put({uuid: uuid})
+      await db.uuid.put({uuid: uuid})
       setUuid(uuid)
     } catch (error) {
     }  
@@ -53,10 +46,13 @@ const Lobby = () => {
     try {
       const storedUuid = await db.table('uuid').toArray()
       const storedGame = await db.table('game').toArray()
-      if(storedUuid[0] && storedGame[0]) {
+      const storedPlayer = await db.table('player').toArray()
+      if(storedUuid[0] && storedGame[0] && storedPlayer[0]) {
         setUuid(storedUuid[0].uuid)
         setLobby(storedGame[0])
+        setPlayerInfo(storedPlayer[0])
       } else {
+        console.log('Missing some or all info, starting new')
       }
     } catch (error) {
     } 
@@ -65,6 +61,7 @@ const Lobby = () => {
   const clearGame = () => {
     db.game.clear()
     db.uuid.clear()
+    db.player.clear()
     history.push('/')
   }
   
@@ -93,11 +90,11 @@ const Lobby = () => {
   }, [])
 
   const playerChoice = ({ target: { name } }) => {
-    setPlayerInfo({ ...playerInfo, choice: name == 'torch', choiceMade: true })
+    updatePlayer({ ...playerInfo, choice: name == 'torch', choiceMade: true })
     io.sendChoice({ uuid: uuid, choice: name == 'torch' })
   }
 
-  const lobbyPlayers = lobby.players.map((player, ind) =>
+  const gamePlayers = lobby.players.map((player, ind) =>
     (<li key={ ind } className={`text-center p-2 ${ player.online ? '' : 'bg-red-600'}`}>
       <div className={`py-1 px-2 ${ player.choiceMade ? 'bg-green-400 font-bold' : 'bg-yellow-400'}`}>
         { player.name }
@@ -108,6 +105,10 @@ const Lobby = () => {
       </div>
     </li>))
 
+    const lobbyReady = lobby.players.map((player, ind) => <LobbyWait key={ ind } player={ player } />)
+    const lobbyWaiting = [...Array(lobby.size - lobbyReady.length)].map((_, ind) => <li key={ ind } className="bg-yellow-300 p-2">Waiting...</li>)
+    const lobbyPlayers = [...lobbyReady, lobbyWaiting]
+
   return (
     <div className="p-2 flex flex-col flex-wrap">
       {/*///// admin /////*/}
@@ -116,21 +117,33 @@ const Lobby = () => {
         <div className="p-1">Code: { lobby.room }</div>
         <div className="p-1">uuid: { uuid && uuid.substring(0, 4) }</div>
       </div>
-
-      {/*///// game /////*/}
+      
       <div className="p-1 flex flex-col flex-wrap justify-center bg-blue-100">
-        <div className="text-lg text-center">Game</div>
+        { lobby.size !== lobbyReady.length ?
 
-        {/*///// player list /////*/}
-        <ul className="flex flex-row justify-around">
-          { lobbyPlayers }
-        </ul>
+        /*///// lobby list /////*/
+        <div>
+          <ul className="flex flex-row justify-around">
+            { lobbyPlayers }
+          </ul>
+          <div className="bg-orange-600 text-center">Waiting on all players...</div> 
+        </div>
 
-        {/*///// center board /////*/}
-        <CenterBoard board={ lobby.board }/>
+        :
 
-        {/*///// player board /////*/}
-        <PlayerBoard player={ playerInfo } playerChoice={ playerChoice }/>
+        /*///// game /////*/
+        <div>
+          {/*///// player list /////*/}
+          <ul className="flex flex-row justify-around">
+            { gamePlayers }
+          </ul>
+
+          {/*///// center board /////*/}
+          <CenterBoard board={ lobby.board }/>
+
+          {/*///// player board /////*/}
+          <PlayerBoard player={ playerInfo } playerChoice={ playerChoice }/>
+        </div> }
       </div>
     </div>
   )
