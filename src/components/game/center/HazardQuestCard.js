@@ -1,9 +1,9 @@
 import React from 'react'
 
-const HazardQuestCard = () => {
+const HazardQuestCard = ({ card }) => {
   return (
     <div className="bg-red-500 font-bold p-2">
-      HAZARD
+      HAZARD: { card.type }
     </div>
   )
 }

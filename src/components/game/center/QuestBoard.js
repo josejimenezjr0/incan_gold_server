@@ -12,11 +12,11 @@ const components = {
 
 const QuestBoard = ({ quest }) => {
   const cards = quest.map((card, index) => {
-    let Component = components[card.card]
+    const Component = components[card.card]
+
     return(
       <QuestCard key={ index }>
-        <p>{ index + 1 }</p>
-        <Component />
+        <Component card={ card }/>
       </QuestCard>
     )
   })

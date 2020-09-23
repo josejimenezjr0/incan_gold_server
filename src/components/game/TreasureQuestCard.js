@@ -1,9 +1,10 @@
 import React from 'react'
 
-const TreasureQuestCard = () => {
+const TreasureQuestCard = ({ card }) => {
+
   return (
     <div className="bg-green-500 font-bold p-2">
-      TREASURE
+      TREASURE: { card.value }
     </div>
   )
 }

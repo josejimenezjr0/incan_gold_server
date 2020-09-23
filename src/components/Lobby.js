@@ -7,6 +7,7 @@ import PlayerBoard from './game/player/PlayerBoard'
 import Round from './game/player/Round'
 import ChoiceBoard from './game/player/ChoiceBoard'
 import LobbyWait from './game/player/LobbyWait'
+import OpponentsList from './game/opponents/OpponentsList'
 
 const Lobby = () => {
   const location = useLocation()
@@ -14,30 +15,31 @@ const Lobby = () => {
   const locationUuid = location.state && location.state.uuid
   const locationGame = location.state && location.state.game
   const [uuid, setUuid] = useState(null)
-  const [lobby, setLobby] = useState({ room: '', players: [], size: 3, board: { round: 1, quest: [] }, deck: [] })
-  const [playerInfo, setPlayerInfo] = useState({ name: '', room: '', host: false, totalScore: 0, roundScore: 0, artifacts: [], choiceMade: false, choice: null })
+  const [lobby, setLobby] = useState({ room: '', players: [], size: 3, round: 0, quest: [], deck: [] })
+  const [playerInfo, setPlayerInfo] = useState({ name: '', host: false, totalScore: 0, roundScore: 0, playerArtifacts: [], choiceMade: false, choice: null })
   
   const updateGame = async game => {
+    console.log('updateGame: ', game)
+    setLobby(game)
     try {
       await db.game.put(game)
-      setLobby(game)
     } catch (error) {
     }  
   }
 
   const updatePlayer = async player => {
-    console.log('updatePlayer: ', player);
+    console.log('updatePlayer: ', player)
+    setPlayerInfo(player)
     try {
       await db.player.put(player, uuid)
-      setPlayerInfo(player)
     } catch (error) {
     }  
   }
 
   const saveUuid = async uuid => {
+    setUuid(uuid)
     try {
       await db.uuid.put({uuid: uuid})
-      setUuid(uuid)
     } catch (error) {
     }  
   }
@@ -91,35 +93,33 @@ const Lobby = () => {
 
   const playerChoice = ({ target: { name } }) => {
     updatePlayer({ ...playerInfo, choice: name == 'torch', choiceMade: true })
-    io.sendChoice({ uuid: uuid, choice: name == 'torch' })
+    io.sendChoice({ uuid: uuid, choice: name === 'torch' })
   }
 
-  const gamePlayers = lobby.players.map((player, ind) =>
-    (<li key={ ind } className={`text-center p-2 ${ player.online ? '' : 'bg-red-600'}`}>
-      <div className={`py-1 px-2 ${ player.choiceMade ? 'bg-green-400 font-bold' : 'bg-yellow-400'}`}>
-        { player.name }
-      </div>
-      <div className="flex flex-col justify-center">
-        <ChoiceBoard player={ player } playerChoice='opponent'/>
-        { player.online ? <Round score={ player.roundScore } artifacts={ player.artifacts}/> : <div className="text-xl transform rotate-90">:(</div> }
-      </div>
-    </li>))
+  const roundStart = () => {
+    io.startRound(lobby.room)
+  }
 
-    const lobbyReady = lobby.players.map((player, ind) => <LobbyWait key={ ind } player={ player } />)
-    const lobbyWaiting = [...Array(lobby.size - lobbyReady.length)].map((_, ind) => <li key={ ind } className="bg-yellow-300 p-2">Waiting...</li>)
-    const lobbyPlayers = [...lobbyReady, lobbyWaiting]
+  const gamePlayers = lobby.players.filter(player => player.uuid !== uuid).map((player, ind) =>(<OpponentsList key={ ind } player={ player } />))
+
+  const lobbyReady = lobby.players.map((player, ind) => <LobbyWait key={ player.uuid } player={ player } />)
+  const lobbyWaiting = [...Array(lobby.size - lobbyReady.length)].map((_, ind) => <li key={ ind } className="bg-yellow-300 p-2">Waiting...</li>)
+  const lobbyPlayers = [...lobbyReady, ...lobbyWaiting]
 
   return (
     <div className="p-2 flex flex-col flex-wrap">
+
       {/*///// admin /////*/}
       <div className="flex p-1 bg-yellow-200 mr-auto">
         <button className="inline-block p-1 bg-gray-300" to="/" onClick={ clearGame } >Clear Game</button>
         <div className="p-1">Code: { lobby.room }</div>
         <div className="p-1">uuid: { uuid && uuid.substring(0, 4) }</div>
       </div>
+      {/*///// admin /////*/}
       
       <div className="p-1 flex flex-col flex-wrap justify-center bg-blue-100">
-        { lobby.size !== lobbyReady.length ?
+      <div>size: {lobby.size} length: {lobbyReady.length }</div>
+        { lobby.size != lobbyReady.length ?
 
         /*///// lobby list /////*/
         <div>
@@ -139,7 +139,7 @@ const Lobby = () => {
           </ul>
 
           {/*///// center board /////*/}
-          <CenterBoard board={ lobby.board }/>
+          <CenterBoard round={ lobby.round } quest={ lobby.quest }roundStart={ roundStart }/>
 
           {/*///// player board /////*/}
           <PlayerBoard player={ playerInfo } playerChoice={ playerChoice }/>

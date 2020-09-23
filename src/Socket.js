@@ -4,7 +4,8 @@ let socket
 const playerInit = (game, uuid) => {
   if(game.init) {
     socket = io('http://192.168.86.21:4001')
-    socket.emit(game.join ? 'join' : 'create', game)
+    // socket.emit(game.join ? 'join' : 'create', game)
+    socket.emit('create', game)
   } else {
     socket = io(`http://192.168.86.21:4001?reconnect=${uuid}`)
   }
@@ -12,7 +13,7 @@ const playerInit = (game, uuid) => {
 
 const gameUpdate = handleUpdate => {
   socket.on('update', update => {
-    console.log(`gameUpdate`, update)
+    // console.log(`gameUpdate`, update)
     handleUpdate(update)
   })
 }
@@ -23,7 +24,7 @@ const playerUuid = uuidSet => {
 
 const playerUpdate = handlePlayerUpdate => {
   socket.on('playerUpdate', update => {
-    console.log(`playerUpdate`, update)
+    // console.log(`playerUpdate`, update)
     handlePlayerUpdate(update)
   })
 }
@@ -32,6 +33,10 @@ const sendChoice = choice => {
   console.log(`sendChoice`, choice)
   socket.emit('choice', choice)
 }
+
+const startRound = room => {
+  socket.emit('startRound', room)
+  }
 
 const gameReset = resetGame => {
   socket.on('forceReset', () => resetGame())
@@ -46,5 +51,6 @@ export default {
   disconnect,
   gameReset,
   playerUpdate,
-  sendChoice
+  sendChoice,
+  startRound
 }

@@ -1,7 +1,7 @@
 import React from 'react'
 import Artifacts from './Artifacts'
 
-const Round = ({ score, artifacts }) => {
+const Round = ({ score , artifacts }) => {
   return (
     <div className="bg-orange-500 font-bold p-2 text-center">
     <p>Round</p>

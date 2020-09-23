@@ -21,7 +21,7 @@ const Admin = () => {
           <div>
             <p>Quest - Round: { game.board.round }</p>
             <ul className="bg-purple-400">
-              { game.board.quest.map((card, ind) => <li key={ ind }>{ card.card } - value: { card.value }</li>)}
+              { game.board.quest.map((card, ind) => <li key={ ind }>{ card.card } - value: { card.value }</li>) }
             </ul>
           </div>
           <div>
