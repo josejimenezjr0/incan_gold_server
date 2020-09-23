@@ -4,14 +4,15 @@ const app = express()
 const server = require('http').createServer(app)
 const socketServer = require('./socketServer')
 
-let games = {}
-let players = {}
+let games = []
 
 app.use(express.static('../client/public'))
-app.get('/games', (req, res) => res.send({ games, players }))
+app.get('/games', (req, res) => {
+  res.json(games)
+})
 app.get('/*', (req, res) => res.redirect('/'))
 
-socketServer(server, games, players)
+socketServer(server, games)
 
 const port = process.env.PORT
 server.listen(port, () => console.log(`Listening on port ${port}`))

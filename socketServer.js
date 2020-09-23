@@ -1,10 +1,24 @@
 const socketio = require('socket.io')
 const { v4: uuidv4 } = require('uuid')
 const chalk = require('chalk')
-const { makePlayer_Game } = require('./lib/gameAssets')
+const { makePlayer_Game, hideInfo, playerInfo, startRound } = require('./lib/gameAssets')
 
-module.exports = (server, games, players) => {
+module.exports = (server, games) => {
   const io = socketio(server)
+
+  const updateGames = (update, room) => {
+    const keepGames = games.filter(game => game.room !== room)
+    games = [...keepGames, update]
+  }
+
+  /**
+   * If player empty OR players doesn't have uuid
+   */
+  const clientCheck = (filter, value) => {
+    const found = games.map(game => game.players).flat().filter(player => player[filter] == value)
+    const result = games.length === 0 || found.length === 0
+    return result
+  }
 
   /**
    * Socket middleware - Check for reconnect flag and if the server has been restarted (players empty or no client uuid)
@@ -14,7 +28,7 @@ module.exports = (server, games, players) => {
     return (socket, next) => {
       const uuid = socket.handshake.query.reconnect
       if(uuid) {
-        if(Object.keys(players).length === 0 || !players.hasOwnProperty(uuid)) {
+        if(clientCheck('uuid', uuid)) {
           socket.reset = true
           return next()
         }
@@ -39,81 +53,113 @@ module.exports = (server, games, players) => {
 
     // Returning player socketID updated. Player rejoins saved game and online status is updated.
     if(uuid) {
-      const { room } = players[uuid]
-      console.log(chalk.green(`${chalk.bgGreen.black.bold(` ${uuid.substring(0,4)} `)} returned to room: ${chalk.bgGreen.black.bold(` ${room} `)}`))
+      //TODO
+      // if(players[uuid].timer) {
+      //   console.log('clearing timer')
+      //   clearTimeout(players[uuid].timer)
+      //   }
+      const [currentGame] = games.filter(game => game.players.some(player => player.uuid == uuid))
+      const [currentPlayer] = currentGame.players.filter(player => player.uuid == uuid)
+      const { room } = currentGame
+
+      const playerUpdate = { ...currentPlayer, socketID: id, online: true }
+      const keepPlayers = currentGame.players.filter(player => player.uuid !== uuid)
+      const gameUpdate = { ...currentGame, players: [...keepPlayers, playerUpdate] }
+
       socket.join(room)
-      players[uuid].socket = id
-      games[room].players.map(player => {
-        if(player.uuid == uuid) player.online = true
-      })
-      io.to(room).emit("update", { ...games[room], deck: null } )
+      io.to(room).emit("update", hideInfo(gameUpdate, false))
+      
+      updateGames(gameUpdate, room)
+      console.log(chalk.green(`${chalk.bgGreen.black.bold(` ${uuid.substring(0,4)} `)} returned to room: ${chalk.bgGreen.black.bold(` ${room} `)}`))
     }
 
-    // Creates a new player and new game. Adds player to the new game and sends out game info
+    
     socket.on("create", startInfo => {
+      console.log('startInfo: ', startInfo);
       const uuid = uuidv4()
       socket.emit("uuid", uuid)
-      const room = Math.random().toString(36).substring(2, 6)
-      console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green  created and joined room: }{bgGreen.black.bold  ${room} }`)
+      if(startInfo.join) {
+        const [currentGame] = games.filter(game => game.room === startInfo.code)
+        const room = startInfo.code
 
-      // verify same room name doesn't already exist
-      if (!games.hasOwnProperty(room)) {
-        [players[uuid], games[room]] = makePlayer_Game(startInfo, uuid, room, socket.id)
+        const gameUpdate = makePlayer_Game(startInfo, uuid, room, socket.id, currentGame)
 
-        // add socket to created game/room and send back game info minus deck
         socket.join(room)
-        socket.emit("update", { ...games[room], deck: null })
-        socket.emit("playerUpdate", players[uuid])
-      } else console.log('Room name already exists')
-    })
+        io.to(room).emit("update", hideInfo(gameUpdate, false))
+        socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
 
-    // Creates a new player and adds that player to an existing game
-    socket.on("join", startInfo => {
-      const uuid = uuidv4()
-      socket.emit("uuid",  uuid )
-      const { code: room } = startInfo
-      console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green  created and joined room: }{bgGreen.black.bold  ${room} }`)
+        updateGames(gameUpdate, room)
+        console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green  created and joined room: }{bgGreen.black.bold  ${room} }`)
+      } else {
+        const room = Math.random().toString(36).substring(2, 6)
 
-      // check if game exists
-      if(games[room]) {
-        let addPlayer 
-        [players[uuid], addPlayer] = makePlayer_Game(startInfo, uuid, room, socket.id)
-        games[room].players = [...games[room].players, addPlayer]
-
-        // add socket to already made game/room and send back game info minus deck
+        const gameUpdate = makePlayer_Game(startInfo, uuid, room, socket.id)
+        
         socket.join(room)
-        io.to(room).emit("update", { ...games[room], deck: null } )
-        socket.emit("playerUpdate", players[uuid])
-      } else console.log('Game not found')
+        io.to(room).emit("update", hideInfo(gameUpdate, false))
+        socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
+
+        updateGames(gameUpdate, room)
+        console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green  created and game room: }{bgGreen.black.bold  ${room} } was created`)
+      }
     })
 
     // Updates game with player choice selection and sends update to other players in the game
     socket.on("choice", ({ uuid, choice }) => {
-      // Server restarted but client has saved game
-      if(!players[uuid]) {
+      if(clientCheck('uuid', uuid)) {
         socket.emit('forceReset')
         return
       }
 
-      players[uuid] = { ...players[uuid], choice, choiceMade: true }
-      games[players[uuid].room].players.map(player => {
-        if(player.uuid == uuid) player.choiceMade = true
-      })
-      io.to(players[uuid].room).emit("update", { ...games[players[uuid].room], deck: null } )
+      const [currentGame] = games.filter(game => game.players.some(player => player.uuid == uuid))
+      const [currentPlayer] = currentGame.players.filter(player => player.uuid == uuid)
+      const { room } = currentGame
+
+      const playerUpdate = { ...currentPlayer, choice, choiceMade: true }
+      const keepPlayers = currentGame.players.filter(player => player.uuid !== uuid)
+      const gameUpdate = { ...currentGame, players: [...keepPlayers, playerUpdate] }
+
+      socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
+
+      updateGames(gameUpdate, room)
+      console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green submitted choice: }{bgGreen.black.bold  ${choice} }`)
+    })
+
+    socket.on("startRound", room => {
+      const [currentGame] = games.filter(game => game.room == room)
+      console.log('currentGame: ', currentGame);
+
+      const gameUpdate = startRound(currentGame, currentGame.players)
+      console.log('gameUpdate: ', gameUpdate);
+
+      io.to(room).emit("update", hideInfo(gameUpdate, true))
+      console.log(`hideInfo`, hideInfo(gameUpdate, true))
+
+      updateGames(gameUpdate, room)
+      console.log(chalk`{bgGreen.black.bold  ${room} }{green started round}`)
     })
 
     //Sets disconnected player to offline status and sends status to remaining players in game
     socket.on("disconnect", () => {
-      const matchID = socket.id
-      const result = Object.entries(players).find(([id, { socket }]) => socket == matchID )
-      if(Object.keys(players).length === 0 || !result) return
-      const uuid = result[0]
-      const room = result[1].room
+      if(clientCheck('socketID', socket.id)) return
+      const [currentGame] = games.filter(game => game.players.some(player => player.socketID == socket.id))
+      const [currentPlayer] = currentGame.players.filter(player => player.socketID == socket.id)
+      const { room } = currentGame
+      const { uuid } = currentPlayer
+
+      const playerUpdate = { ...currentPlayer, online: false }
+      const keepPlayers = currentGame.players.filter(player => player.uuid !== uuid)
+      const gameUpdate = { ...currentGame, players: [...keepPlayers, playerUpdate] }
+
+      io.to(room).emit("update", hideInfo(gameUpdate, false))
+
+      updateGames(gameUpdate, room)
       console.log(chalk.red.bold(`${chalk.bgRed.black.bold(` ${uuid.substring(0, 4)} `)} disconnected from room: ${chalk.bgRed.black.bold(` ${room} `)}`))
-      games[room].players.map(player => {
-        if(player.uuid == uuid) player.online = false
-      })
-      io.to(room).emit("update", { ...games[room], deck: null } )
+      ///TODO
+      // players[uuid].timer = setTimeout(() => {
+      //   games[room].players[uuid].online = false
+      //   io.to(room).emit("update", { ...games[room], deck: null } )
+      // }, 10000)
     })
   })
 }
