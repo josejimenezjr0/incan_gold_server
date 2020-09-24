@@ -36,7 +36,15 @@ const sendChoice = choice => {
 
 const startRound = room => {
   socket.emit('startRound', room)
-  }
+}
+
+const revealChoices = room => {
+  socket.emit('revealChoices', room)
+}
+
+const startTurn = room => {
+  socket.emit('startTurn', room)
+}
 
 const gameReset = resetGame => {
   socket.on('forceReset', () => resetGame())
@@ -52,5 +60,7 @@ export default {
   gameReset,
   playerUpdate,
   sendChoice,
-  startRound
+  startRound,
+  revealChoices,
+  startTurn
 }

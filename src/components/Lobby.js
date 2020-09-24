@@ -100,7 +100,16 @@ const Lobby = () => {
     io.startRound(lobby.room)
   }
 
+  const choicesReveal = () => {
+    io.revealChoices(lobby.room)
+  }
+
+  const turnStart = () => {
+    io.startTurn(lobby.room)
+  }
+
   const gamePlayers = lobby.players.filter(player => player.uuid !== uuid).map((player, ind) =>(<OpponentsList key={ ind } player={ player } />))
+  const allChoices = lobby.players.every(player => player.choiceMade === true)
 
   const lobbyReady = lobby.players.map((player, ind) => <LobbyWait key={ player.uuid } player={ player } />)
   const lobbyWaiting = [...Array(lobby.size - lobbyReady.length)].map((_, ind) => <li key={ ind } className="bg-yellow-300 p-2">Waiting...</li>)
@@ -139,7 +148,7 @@ const Lobby = () => {
           </ul>
 
           {/*///// center board /////*/}
-          <CenterBoard round={ lobby.round } quest={ lobby.quest }roundStart={ roundStart }/>
+          <CenterBoard round={ lobby.round } quest={ lobby.quest } roundStart={ roundStart } allChoices={ allChoices } choicesReveal={ choicesReveal } turnStart={ turnStart }/>
 
           {/*///// player board /////*/}
           <PlayerBoard player={ playerInfo } playerChoice={ playerChoice }/>
