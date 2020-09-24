@@ -1,7 +1,7 @@
 const socketio = require('socket.io')
 const { v4: uuidv4 } = require('uuid')
 const chalk = require('chalk')
-const { makePlayer_Game, hideInfo, playerInfo, startRound } = require('./lib/gameAssets')
+const { makePlayer_Game, hideInfo, playerInfo, startTurn, startRound, revealChoices } = require('./lib/gameAssets')
 
 module.exports = (server, games) => {
   const io = socketio(server)
@@ -67,7 +67,7 @@ module.exports = (server, games) => {
       const gameUpdate = { ...currentGame, players: [...keepPlayers, playerUpdate] }
 
       socket.join(room)
-      io.to(room).emit("update", hideInfo(gameUpdate, false))
+      io.to(room).emit("update", hideInfo(gameUpdate))
       
       updateGames(gameUpdate, room)
       console.log(chalk.green(`${chalk.bgGreen.black.bold(` ${uuid.substring(0,4)} `)} returned to room: ${chalk.bgGreen.black.bold(` ${room} `)}`))
@@ -85,7 +85,7 @@ module.exports = (server, games) => {
         const gameUpdate = makePlayer_Game(startInfo, uuid, room, socket.id, currentGame)
 
         socket.join(room)
-        io.to(room).emit("update", hideInfo(gameUpdate, false))
+        io.to(room).emit("update", hideInfo(gameUpdate))
         socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
 
         updateGames(gameUpdate, room)
@@ -96,7 +96,7 @@ module.exports = (server, games) => {
         const gameUpdate = makePlayer_Game(startInfo, uuid, room, socket.id)
         
         socket.join(room)
-        io.to(room).emit("update", hideInfo(gameUpdate, false))
+        io.to(room).emit("update", hideInfo(gameUpdate))
         socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
 
         updateGames(gameUpdate, room)
@@ -125,18 +125,39 @@ module.exports = (server, games) => {
       console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green submitted choice: }{bgGreen.black.bold  ${choice} }`)
     })
 
+    socket.on("revealChoices", room => {
+      const [currentGame] = games.filter(game => game.room == room)
+
+      const playersUpdate = revealChoices(currentGame.players)
+      const gameUpdate = { ...currentGame, players: playersUpdate }
+
+      io.to(room).emit("update", hideInfo(gameUpdate))
+
+      updateGames(gameUpdate, room)
+      console.log(chalk`{bgGreen.black.bold  ${room} }{green revealed choices}`)
+    })
+
     socket.on("startRound", room => {
       const [currentGame] = games.filter(game => game.room == room)
-      console.log('currentGame: ', currentGame);
 
-      const gameUpdate = startRound(currentGame, currentGame.players)
-      console.log('gameUpdate: ', gameUpdate);
+      const roundUpdate = startRound(currentGame)
+      const gameUpdate = startTurn(roundUpdate)
 
-      io.to(room).emit("update", hideInfo(gameUpdate, true))
-      console.log(`hideInfo`, hideInfo(gameUpdate, true))
+      io.to(room).emit("update", hideInfo(gameUpdate))
 
       updateGames(gameUpdate, room)
       console.log(chalk`{bgGreen.black.bold  ${room} }{green started round}`)
+    })
+
+    socket.on("startTurn", room => {
+      const [currentGame] = games.filter(game => game.room == room)
+
+      const gameUpdate = startTurn(currentGame)
+
+      io.to(room).emit("update", hideInfo(gameUpdate))
+
+      updateGames(gameUpdate, room)
+      console.log(chalk`{bgGreen.black.bold  ${room} }{green started turn}`)
     })
 
     //Sets disconnected player to offline status and sends status to remaining players in game
@@ -151,7 +172,7 @@ module.exports = (server, games) => {
       const keepPlayers = currentGame.players.filter(player => player.uuid !== uuid)
       const gameUpdate = { ...currentGame, players: [...keepPlayers, playerUpdate] }
 
-      io.to(room).emit("update", hideInfo(gameUpdate, false))
+      io.to(room).emit("update", hideInfo(gameUpdate))
 
       updateGames(gameUpdate, room)
       console.log(chalk.red.bold(`${chalk.bgRed.black.bold(` ${uuid.substring(0, 4)} `)} disconnected from room: ${chalk.bgRed.black.bold(` ${room} `)}`))
