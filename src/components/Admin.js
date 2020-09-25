@@ -3,25 +3,35 @@ import axios from 'axios'
 
 const Admin = () => {
   const [ games, setGames ] = useState([])
-  const [ players, setPlayers ] = useState([])
+  
   const [show, setShow] = useState(false)
 
   const handleUpdate = async () => {
     const res = await axios.get('/games')
     console.log('res.data: ', res.data);
-    setGames(res.data.games)
-    setPlayers(res.data.players)
+    setGames(res.data)
   }
 
-  const listGames = Object.entries(games).map(([room, game], ind) => (
+  const deleteGame = async room => {
+    const res = await axios.post('/games', { room: room })
+    console.log('sent post')
+    console.log('res.data: ', res.data);
+    setGames(res.data)
+  }
+
+  const vBool = (label, item) => <span>{label}: <span className={ item ? 'bg-green-700' : 'bg-red-700'}>{`${ item }`}</span></span>
+
+  const listGames = games.map((game, ind) => (
     <li className="px-2" key={ ind }>
       <div className="bg-indigo-100 p-2">
-        <div>Room: { room }, Size: { game.size }</div>
+        <button className="inline-block mt-2 p-1 mx-auto text-white font-bold bg-red-700" onClick={ () => deleteGame(game.room) }>Delete</button>
+        <div>Room: { game.room }, Size: { game.size }, Spare: { game.spare }</div>
+        <div>Artifiacts: { game.artifacts }, Hazards: { JSON.stringify(game.hazards) }</div>
+        <div>Quest Cycle: { game.questCycle }, Round: { game.round }</div>
         <div>
           <div>
-            <p>Quest - Round: { game.board.round }</p>
             <ul className="bg-purple-400">
-              { game.board.quest.map((card, ind) => <li key={ ind }>{ card.card } - value: { card.value }</li>) }
+              { game.quest.map((card, ind) => <li key={ ind }>{ card.card } - { `${card.card === 'HazardQuestCard' ? `type: ${card.type}` : `value: ${card.value}` }` }</li>) }
             </ul>
           </div>
           <div>
@@ -31,37 +41,26 @@ const Admin = () => {
             </div>
           </div>
         </div>
-        <ul>
-          { game.players.map((player, ind) => (
-            <li className="py-2" key={ ind }>
-              <div className="p-2 bg-orange-300">
-                <div className={ player.online ? 'bg-green-700' : 'bg-red-700'}> ID: { player.uuid.substring(0, 4) }</div>
-                <div>Artifiacts: { JSON.stringify(player.artifacts) }</div>
-                <div className={ player.choiceMade ? 'bg-green-700' : 'bg-red-700'}>{ player.choiceMade ? `Choice: ${player.choice}` : 'choiceMade'}</div>
-                <div>Round Score: { player.roundScore }</div>
-              </div>
-            </li>
-          )) }
-        </ul>
-      </div>
-    </li>
-  ))
-
-    const listPlayers = Object.entries(players).map(([uuid, info], ind) => (
-    <li className="px-2" key={ ind }>
-      <div className="bg-indigo-100 p-2">
-        <div>Player: { uuid.substring(0, 4) }</div>
-        <div className="p-2 bg-orange-300">
-          <div>Room: { info.room }</div>
-          <div>Host: { `${info.host}` }</div>
-          <div>Socket: { info.socket.substring(0, 4) }</div>
-          <div>Choice: { `${info.choice}` }</div>
-          <div>Total Score: { info.totalScore }</div>
+        <div>
+        <p>Players</p>
+          <ul>
+            { game.players.map((player, ind) => (
+              <li className="py-2" key={ ind }>
+                <div className="p-2 bg-orange-300">
+                  <div>{ vBool('uuid', player.uuid.substring(0, 4)) }, socketID: { player.socketID.substring(0, 4) }</div>
+                  <div>Name: { player.name }, { vBool('Host', player.host) }</div>
+                  <div>Artifiacts: { JSON.stringify(player.playerArtifacts) }</div>
+                  <div>Total Score: { player.totalScore }, Round Score: { player.roundScore }</div>
+                  <div>{ vBool('leftRound', player.leftRound) }, { vBool('showChoice', player.showChoice) }</div>
+                  <div>{ vBool('choiceMade', player.choiceMade) }, { vBool('choice', player.choice) }</div>
+                </div>
+              </li>
+            )) }
+          </ul>
         </div>
       </div>
     </li>
   ))
-
 
   return (
     <div className="p-4 flex flex-col flex-wrap items-center justify-center">
@@ -69,13 +68,14 @@ const Admin = () => {
       <div>
         <div className="text-lg text-center">Games</div>
         <ul className="p-4 flex">
-          { listGames }
-        </ul>
-      </div>
-      <div>
-        <div className="text-lg text-center">Players</div>
-        <ul className="p-4 flex">
-          { listPlayers }
+          { 
+            games.length === 0 ? 
+            <div className="text-lg font-bold bg-red-700">No games yet!</div>
+            :
+            <div>
+              { listGames }
+            </div>
+          }
         </ul>
       </div>
     </div>

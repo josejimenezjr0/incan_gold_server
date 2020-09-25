@@ -29,15 +29,15 @@ const calcPieces = score => {
   return [ gold, obsidian, turquoise ]
 }
 
-const Tent = ({ score }) => {
+const Tent = ({ score, isSpare }) => {
   const scorePieces = calcPieces(score)
     .map((piece, treasureIndex) => {
       if(piece) {
-        let Component = components[treasureIndex]
+        const Component = components[treasureIndex]
         return(
           <div className="flex justify-center">
             {[...Array(piece)].map((_, index) => (
-              <TreasurePiece key={ index }>
+              <TreasurePiece key={`${treasureIndex} - ${index}`}>
                 <Component />
               </TreasurePiece>
             ))}
@@ -48,7 +48,7 @@ const Tent = ({ score }) => {
 
   return (
     <div className="bg-blue-500 font-bold p-2 text-center">
-    <p>Tent</p>
+    <p>{isSpare ? 'Spare' : 'Tent Score'}</p>
     <p>{ score }</p>
     { scorePieces }
     </div>

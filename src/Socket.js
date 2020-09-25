@@ -13,18 +13,21 @@ const playerInit = (game, uuid) => {
 
 const gameUpdate = handleUpdate => {
   socket.on('update', update => {
-    // console.log(`gameUpdate`, update)
+    console.log(`gameUpdate`)
     handleUpdate(update)
   })
 }
 
 const playerUuid = uuidSet => {
-  socket.on('uuid', uuid => uuidSet(uuid))
+  socket.on('uuid', uuid => {
+    console.log('uuid')
+    uuidSet(uuid)
+  }) 
 }
 
 const playerUpdate = handlePlayerUpdate => {
   socket.on('playerUpdate', update => {
-    // console.log(`playerUpdate`, update)
+    console.log(`playerUpdate`)
     handlePlayerUpdate(update)
   })
 }
@@ -35,18 +38,22 @@ const sendChoice = choice => {
 }
 
 const startRound = room => {
+  console.log('startRound');
   socket.emit('startRound', room)
 }
 
 const revealChoices = room => {
+  console.log('revealChoices');
   socket.emit('revealChoices', room)
 }
 
 const startTurn = room => {
+  console.log('startTurn')
   socket.emit('startTurn', room)
 }
 
 const gameReset = resetGame => {
+  console.log('gameReset')
   socket.on('forceReset', () => resetGame())
 }
 

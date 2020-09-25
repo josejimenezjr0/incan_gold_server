@@ -1,15 +1,13 @@
 import React from 'react'
-import TorchCard from './TorchCard'
-import CampCard from './CampCard'
 import Round from './Round'
 import Tent from './Tent'
 import ChoiceBoard from './ChoiceBoard'
 
-const PlayerBoard = ({ player, playerChoice }) => {
+const PlayerBoard = ({ player, playerChoice, questCycle }) => {
   return (
     <div className="flex flex-col bg-green-200 p-2">
       <div className="text-center font-bold">{ player.name }</div>
-      <ChoiceBoard player={ player } playerChoice={ playerChoice }/>
+      <ChoiceBoard player={ player } playerChoice={ playerChoice } leftRound={ player.leftRound } questCycle={ questCycle }/>
       <div className="p-2 flex justify-center bg-purple-300 mx-auto">
         <div className="flex">
           <Tent score={ player.totalScore }/>

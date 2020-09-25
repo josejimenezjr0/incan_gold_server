@@ -4,10 +4,10 @@ import io from '../Socket'
 import db from '../db'
 import CenterBoard from './game/center/CenterBoard'
 import PlayerBoard from './game/player/PlayerBoard'
-import Round from './game/player/Round'
-import ChoiceBoard from './game/player/ChoiceBoard'
 import LobbyWait from './game/player/LobbyWait'
 import OpponentsList from './game/opponents/OpponentsList'
+
+const ROUND0 = 'round0'
 
 const Lobby = () => {
   const location = useLocation()
@@ -15,10 +15,11 @@ const Lobby = () => {
   const locationUuid = location.state && location.state.uuid
   const locationGame = location.state && location.state.game
   const [uuid, setUuid] = useState(null)
-  const [lobby, setLobby] = useState({ room: '', players: [], size: 3, round: 0, quest: [], deck: [] })
+  const [lobby, setLobby] = useState({ room: '', players: [], size: 3, questCycle: ROUND0, round: 0, quest: [], deck: [] })
   const [playerInfo, setPlayerInfo] = useState({ name: '', host: false, totalScore: 0, roundScore: 0, playerArtifacts: [], choiceMade: false, choice: null })
   
   const updateGame = async game => {
+    const { roundScore, playerArtifacts, leftRound, choiceMade, choice } = game.players.filter(player => player.uuid === uuid)
     console.log('updateGame: ', game)
     setLobby(game)
     try {
@@ -109,7 +110,6 @@ const Lobby = () => {
   }
 
   const gamePlayers = lobby.players.filter(player => player.uuid !== uuid).map((player, ind) =>(<OpponentsList key={ ind } player={ player } />))
-  const allChoices = lobby.players.every(player => player.choiceMade === true)
 
   const lobbyReady = lobby.players.map((player, ind) => <LobbyWait key={ player.uuid } player={ player } />)
   const lobbyWaiting = [...Array(lobby.size - lobbyReady.length)].map((_, ind) => <li key={ ind } className="bg-yellow-300 p-2">Waiting...</li>)
@@ -148,10 +148,10 @@ const Lobby = () => {
           </ul>
 
           {/*///// center board /////*/}
-          <CenterBoard round={ lobby.round } quest={ lobby.quest } roundStart={ roundStart } allChoices={ allChoices } choicesReveal={ choicesReveal } turnStart={ turnStart }/>
+          <CenterBoard round={ lobby.round } quest={ lobby.quest } roundStart={ roundStart } questCycle={ lobby.questCycle } choicesReveal={ choicesReveal } spare={ lobby.spare } turnStart={ turnStart } endCamp={ lobby.endCamp } endHazard={ lobby.endHazard }/>
 
           {/*///// player board /////*/}
-          <PlayerBoard player={ playerInfo } playerChoice={ playerChoice }/>
+          <PlayerBoard player={ playerInfo } playerChoice={ playerChoice } questCycle={ lobby.questCycle }/>
         </div> }
       </div>
     </div>

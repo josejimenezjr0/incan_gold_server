@@ -1,6 +1,8 @@
 import React from 'react'
 
-const TempleCard = ({ position, round, roundStart }) => {
+const ZERO = 'zero'
+
+const TempleCard = ({ position, round, roundStart, questCycle }) => {
   const flipped = round === position
   const nextRound = round + 1 === position  
   return (
@@ -9,7 +11,7 @@ const TempleCard = ({ position, round, roundStart }) => {
       {`TEMPLE ${ position }`}
     </div>
     :
-    <button type="button" disabled={ !nextRound } className={`bg-gray-800 text-white text-xs p-2 m-1 ${ nextRound ? '' : 'opacity-75 cursor-not-allowed'}`} onClick={ roundStart }>
+    <button type="button" disabled={ !nextRound || questCycle !== ZERO } className={`bg-gray-800 text-white text-xs p-2 m-1 ${ nextRound && questCycle === ZERO ? '' : 'opacity-50 cursor-not-allowed'}`} onClick={ roundStart }>
       {`TEMPLE ${ position }`}
     </button>
   )

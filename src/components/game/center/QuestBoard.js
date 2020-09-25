@@ -11,29 +11,22 @@ const components = {
   ArtifactQuestCard
 }
 
-const QuestBoard = ({ quest, allChoices, choicesReveal, turnStart }) => {
+const QuestBoard = ({ quest, questCycle, choicesReveal, turnStart, endCamp, endHazard }) => {
   const cards = quest.map((card, index) => {
     const Component = components[card.card]
 
     return(
-      <QuestCard key={ index }>
-        <Component card={ card }/>
+      <QuestCard key={ index } >
+        <Component card={ card } endCamp={ endCamp } endHazard={ endHazard }/>
       </QuestCard>
     )
   })
   return (
-    <div className="p-2 flex flex-wrap bg-red-300 items-center justify-center mx-auto text-center">
-      { cards }
-      {
-        allChoices ?
+    <div className={ `p-2 flex flex-wrap bg-red-300 items-center justify-center mx-auto text-center` }>
+      { cards.reverse() }
       <QuestCard >
-        <TopQuestCard choicesReveal={ choicesReveal }/>
+        <TopQuestCard choicesReveal={ choicesReveal } questCycle={ questCycle } turnStart={ turnStart }/>
       </QuestCard>
-      :
-      <QuestCard >
-        <TopQuestCard turnStart={ turnStart }/>
-      </QuestCard>
-      }
     </div>
   )
 }
