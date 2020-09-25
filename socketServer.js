@@ -2,13 +2,30 @@ const socketio = require('socket.io')
 const { v4: uuidv4 } = require('uuid')
 const chalk = require('chalk')
 const { makePlayer_Game, hideInfo, playerInfo, startTurn, startRound, revealChoices } = require('./lib/gameAssets')
+const ZERO = 'zero'
+const WAIT = 'wait'
+const REVEAL = 'reveal'
+const FLIP = 'flip'
 
-module.exports = (server, games) => {
+module.exports = (server, games, setGames, httpServer) => {
+  httpServer.post('/games', (req, res) => {
+    deleteGame(req.body.room)
+    res.send(games)
+  })
+
   const io = socketio(server)
 
   const updateGames = (update, room) => {
     const keepGames = games.filter(game => game.room !== room)
-    games = [...keepGames, update]
+    const gamesUpdate = [...keepGames, update]
+    games = gamesUpdate
+    setGames([...keepGames, update])
+  }
+
+  const deleteGame = (room) => {
+    const gamesUpdate = games.filter(game => game.room !== room)
+    games = gamesUpdate
+    setGames(gamesUpdate)
   }
 
   /**
@@ -46,7 +63,6 @@ module.exports = (server, games) => {
 
     // If client needs to be reset emits a force reset command to client socket and stops
     if(reset) {
-      console.log(chalk.bgRed.white.bold("Force Reset"))
       socket.emit('forceReset')
       return
     }
@@ -75,7 +91,6 @@ module.exports = (server, games) => {
 
     
     socket.on("create", startInfo => {
-      console.log('startInfo: ', startInfo);
       const uuid = uuidv4()
       socket.emit("uuid", uuid)
       if(startInfo.join) {
@@ -115,11 +130,14 @@ module.exports = (server, games) => {
       const [currentPlayer] = currentGame.players.filter(player => player.uuid == uuid)
       const { room } = currentGame
 
-      const playerUpdate = { ...currentPlayer, choice, choiceMade: true }
+      const curPlayerUpdate = { ...currentPlayer, choice, choiceMade: true }
       const keepPlayers = currentGame.players.filter(player => player.uuid !== uuid)
-      const gameUpdate = { ...currentGame, players: [...keepPlayers, playerUpdate] }
+      const playersUpdate = [...keepPlayers, curPlayerUpdate]
+      const allChoices = playersUpdate.every(player => player.choiceMade === true)
+      const gameUpdate = { ...currentGame, players: playersUpdate, questCycle: allChoices ? REVEAL : WAIT }
 
       socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
+      io.to(room).emit("update", hideInfo(gameUpdate))
 
       updateGames(gameUpdate, room)
       console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green submitted choice: }{bgGreen.black.bold  ${choice} }`)
@@ -129,32 +147,42 @@ module.exports = (server, games) => {
       const [currentGame] = games.filter(game => game.room == room)
 
       const playersUpdate = revealChoices(currentGame.players)
-      const gameUpdate = { ...currentGame, players: playersUpdate }
+      const gameUpdate = { ...currentGame, reveal: false, players: playersUpdate, questCycle: FLIP }
 
       io.to(room).emit("update", hideInfo(gameUpdate))
+      gameUpdate.players.map(player => {
+        io.to(player.socketID).emit("playerUpdate", playerInfo(gameUpdate, player.uuid))
+      })
 
       updateGames(gameUpdate, room)
       console.log(chalk`{bgGreen.black.bold  ${room} }{green revealed choices}`)
     })
 
     socket.on("startRound", room => {
-      const [currentGame] = games.filter(game => game.room == room)
+      const [currentGame] = games.filter(game => game.room === room)
 
       const roundUpdate = startRound(currentGame)
       const gameUpdate = startTurn(roundUpdate)
 
       io.to(room).emit("update", hideInfo(gameUpdate))
+      gameUpdate.players.map(player => {
+        io.to(player.socketID).emit("playerUpdate", playerInfo(gameUpdate, player.uuid))
+      })
 
       updateGames(gameUpdate, room)
       console.log(chalk`{bgGreen.black.bold  ${room} }{green started round}`)
     })
 
     socket.on("startTurn", room => {
+      console.log('startTurn')
       const [currentGame] = games.filter(game => game.room == room)
 
       const gameUpdate = startTurn(currentGame)
 
       io.to(room).emit("update", hideInfo(gameUpdate))
+      gameUpdate.players.map(player => {
+        io.to(player.socketID).emit("playerUpdate", playerInfo(gameUpdate, player.uuid))
+      })
 
       updateGames(gameUpdate, room)
       console.log(chalk`{bgGreen.black.bold  ${room} }{green started turn}`)
