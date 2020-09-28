@@ -13,6 +13,26 @@ module.exports = (server, games, setGames, httpServer) => {
     res.send(games)
   })
 
+  /**
+   * If player empty OR players doesn't have uuid
+   */
+  const clientCheck = (filter, value) => {
+    const found = games.map(game => game.players).flat().filter(player => player[filter] == value)
+    const result = games.length === 0 || found.length === 0
+    return result
+  }
+
+  const gameCheck = (filter, value) => {
+    const found = games.filter(game => game[filter] == value)
+    const result = games.length === 0 || found.length === 0
+    return result
+  }
+
+  httpServer.post('/checkjoin', (req, res) => {
+    console.log('req.body.room.toUpperCase(): ', req.body.room.toUpperCase());
+    res.send(!gameCheck('room', req.body.room.toUpperCase()))
+  })
+
   const io = socketio(server)
 
   const updateGames = (update, room) => {
@@ -28,14 +48,7 @@ module.exports = (server, games, setGames, httpServer) => {
     setGames(gamesUpdate)
   }
 
-  /**
-   * If player empty OR players doesn't have uuid
-   */
-  const clientCheck = (filter, value) => {
-    const found = games.map(game => game.players).flat().filter(player => player[filter] == value)
-    const result = games.length === 0 || found.length === 0
-    return result
-  }
+
 
   /**
    * Socket middleware - Check for reconnect flag and if the server has been restarted (players empty or no client uuid)
@@ -94,10 +107,11 @@ module.exports = (server, games, setGames, httpServer) => {
       const uuid = uuidv4()
       socket.emit("uuid", uuid)
       if(startInfo.join) {
-        const [currentGame] = games.filter(game => game.room === startInfo.code)
-        const room = startInfo.code
+        const room = startInfo.code.toUpperCase()
+        const [currentGame] = games.filter(game => game.room === room)
 
         const gameUpdate = makePlayer_Game(startInfo, uuid, room, socket.id, currentGame)
+        console.log('gameUpdate.room: ', gameUpdate.room);
 
         socket.join(room)
         io.to(room).emit("update", hideInfo(gameUpdate))
@@ -106,7 +120,7 @@ module.exports = (server, games, setGames, httpServer) => {
         updateGames(gameUpdate, room)
         console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green  created and joined room: }{bgGreen.black.bold  ${room} }`)
       } else {
-        const room = Math.random().toString(36).substring(2, 6)
+        const room = Math.random().toString(36).substring(2, 6).toUpperCase()
 
         const gameUpdate = makePlayer_Game(startInfo, uuid, room, socket.id)
         
@@ -121,20 +135,24 @@ module.exports = (server, games, setGames, httpServer) => {
 
     // Updates game with player choice selection and sends update to other players in the game
     socket.on("choice", ({ uuid, choice }) => {
-      if(clientCheck('uuid', uuid)) {
-        socket.emit('forceReset')
+      const [currentGame] = games.filter(game => game.players.some(player => player.uuid == uuid))
+      if(currentGame.endCamp || currentGame.endHazard) {
+        console.log('endCamp: ', currentGame.endHazard);
+        console.log('endCamp: ', currentGame.endCamp);
+        console.log(`choice shouldn't run`);
         return
       }
 
-      const [currentGame] = games.filter(game => game.players.some(player => player.uuid == uuid))
       const [currentPlayer] = currentGame.players.filter(player => player.uuid == uuid)
       const { room } = currentGame
 
-      const curPlayerUpdate = { ...currentPlayer, choice, choiceMade: true }
+      const curPlayerUpdate = { ...currentPlayer, choice, choiceMade: true, showChoice: currentGame.onePlayer }
       const keepPlayers = currentGame.players.filter(player => player.uuid !== uuid)
       const playersUpdate = [...keepPlayers, curPlayerUpdate]
-      const allChoices = playersUpdate.every(player => player.choiceMade === true)
-      const gameUpdate = { ...currentGame, players: playersUpdate, questCycle: allChoices ? REVEAL : WAIT }
+      const allChoices = playersUpdate.every(player => player.choiceMade)
+      console.log('choice -> allChoices: ', allChoices);
+      const gameUpdate = { ...currentGame, players: playersUpdate, questCycle: currentGame.onePlayer ? FLIP : (allChoices ? REVEAL : WAIT) }
+      console.log('choice -> gameUpdate: ', gameUpdate);
 
       socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
       io.to(room).emit("update", hideInfo(gameUpdate))
@@ -145,9 +163,14 @@ module.exports = (server, games, setGames, httpServer) => {
 
     socket.on("revealChoices", room => {
       const [currentGame] = games.filter(game => game.room == room)
+      if(currentGame.endCamp || currentGame.endHazard) {
+        console.log('endHazard: ', currentGame.endHazard);
+        console.log('endCamp: ', currentGame.endCamp);
+        console.log(`revealChoices shouldn't run`);
+        return
+      }
 
-      const playersUpdate = revealChoices(currentGame.players)
-      const gameUpdate = { ...currentGame, reveal: false, players: playersUpdate, questCycle: FLIP }
+      const gameUpdate = revealChoices(currentGame)
 
       io.to(room).emit("update", hideInfo(gameUpdate))
       gameUpdate.players.map(player => {
@@ -173,11 +196,20 @@ module.exports = (server, games, setGames, httpServer) => {
       console.log(chalk`{bgGreen.black.bold  ${room} }{green started round}`)
     })
 
-    socket.on("startTurn", room => {
+    socket.on("startTurn", ({ room }) => {
       console.log('startTurn')
-      const [currentGame] = games.filter(game => game.room == room)
+      const [currentGame] = games.filter(game => game.room === room)
+      console.log('currentGame: ', currentGame);
+      if(currentGame.endCamp || currentGame.endHazard) {
+        console.log('endHazard: ', currentGame.endHazard);
+        console.log('endCamp: ', currentGame.endCamp);
+        console.log(`startRound shouldn't run`);
+        return
+      }
+      console.log('before startTurn currentGame: ', currentGame);
 
       const gameUpdate = startTurn(currentGame)
+      console.log('after start turn gameUpdate: ', gameUpdate);
 
       io.to(room).emit("update", hideInfo(gameUpdate))
       gameUpdate.players.map(player => {
