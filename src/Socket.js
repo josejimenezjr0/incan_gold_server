@@ -4,7 +4,6 @@ let socket
 const playerInit = (game, uuid) => {
   if(game.init) {
     socket = io('http://192.168.86.21:4001')
-    // socket.emit(game.join ? 'join' : 'create', game)
     socket.emit('create', game)
   } else {
     socket = io(`http://192.168.86.21:4001?reconnect=${uuid}`)

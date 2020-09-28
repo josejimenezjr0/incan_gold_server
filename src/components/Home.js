@@ -23,10 +23,16 @@ const Home = () => {
   }, [])
 
   return (
-    <div>
-      <div className="flex justify-around">
-        <Link to="/new">New</Link>
-        <Link to="/join">Join</Link>
+    <div className="flex justify-center">
+      <div className="w-full max-w-xs mt-8">
+        <div className="flex justify-around shadow-md rounded px-8 pt-6 pb-8">
+          <div className="mb-4">
+            <Link className="bg-blue-400 hover:bg-blue-600 text-gray-900 tracking-wide font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" to="/new" >New</Link>
+          </div>
+          <div className="mb-4">
+            <Link className="bg-blue-400 hover:bg-blue-600 text-gray-900 tracking-wide font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" to="/join" >Join</Link>
+          </div>
+        </div>
       </div>
     </div>
   )

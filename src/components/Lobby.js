@@ -7,7 +7,7 @@ import PlayerBoard from './game/player/PlayerBoard'
 import LobbyWait from './game/player/LobbyWait'
 import OpponentsList from './game/opponents/OpponentsList'
 
-const ROUND0 = 'round0'
+const ZERO = 'zero'
 
 const Lobby = () => {
   const location = useLocation()
@@ -15,11 +15,10 @@ const Lobby = () => {
   const locationUuid = location.state && location.state.uuid
   const locationGame = location.state && location.state.game
   const [uuid, setUuid] = useState(null)
-  const [lobby, setLobby] = useState({ room: '', players: [], size: 3, questCycle: ROUND0, round: 0, quest: [], deck: [] })
+  const [lobby, setLobby] = useState({ room: '', players: [], size: 3, questCycle: ZERO, round: 0, quest: [], deck: [] })
   const [playerInfo, setPlayerInfo] = useState({ name: '', host: false, totalScore: 0, roundScore: 0, playerArtifacts: [], choiceMade: false, choice: null })
   
   const updateGame = async game => {
-    const { roundScore, playerArtifacts, leftRound, choiceMade, choice } = game.players.filter(player => player.uuid === uuid)
     console.log('updateGame: ', game)
     setLobby(game)
     try {
@@ -106,10 +105,10 @@ const Lobby = () => {
   }
 
   const turnStart = () => {
-    io.startTurn(lobby.room)
+    io.startTurn({ room: lobby.room })
   }
 
-  const gamePlayers = lobby.players.filter(player => player.uuid !== uuid).map((player, ind) =>(<OpponentsList key={ ind } player={ player } />))
+  const gamePlayers = lobby.players.filter(player => player.uuid !== uuid).map((player, ind) =>(<OpponentsList key={ ind } player={ player } questCycle={ lobby.questCycle } onePlayer={ lobby.onePlayer }/>))
 
   const lobbyReady = lobby.players.map((player, ind) => <LobbyWait key={ player.uuid } player={ player } />)
   const lobbyWaiting = [...Array(lobby.size - lobbyReady.length)].map((_, ind) => <li key={ ind } className="bg-yellow-300 p-2">Waiting...</li>)
@@ -126,16 +125,19 @@ const Lobby = () => {
       </div>
       {/*///// admin /////*/}
       
-      <div className="p-1 flex flex-col flex-wrap justify-center bg-blue-100">
-      <div>size: {lobby.size} length: {lobbyReady.length }</div>
+      <div className="p-1 flex flex-col flex-wrap justify-center">
         { lobby.size != lobbyReady.length ?
 
         /*///// lobby list /////*/
-        <div>
+        <div className="flex flex-col">
           <ul className="flex flex-row justify-around">
             { lobbyPlayers }
           </ul>
-          <div className="bg-orange-600 text-center">Waiting on all players...</div> 
+          <div className="flex bg-orange-600 justify-center mx-auto mt-4">Waiting on all players...</div> 
+          <div className="flex p-2 mt-4 items-center justify-center">
+            Join Code: <span className="p-2 bg-green-400 font-bold">{ lobby.room }</span>
+          </div>
+          
         </div>
 
         :
@@ -148,10 +150,10 @@ const Lobby = () => {
           </ul>
 
           {/*///// center board /////*/}
-          <CenterBoard round={ lobby.round } quest={ lobby.quest } roundStart={ roundStart } questCycle={ lobby.questCycle } choicesReveal={ choicesReveal } spare={ lobby.spare } turnStart={ turnStart } endCamp={ lobby.endCamp } endHazard={ lobby.endHazard }/>
+          <CenterBoard round={ lobby.round } quest={ lobby.quest } roundStart={ roundStart } questCycle={ lobby.questCycle } choicesReveal={ choicesReveal } spare={ lobby.spare } turnStart={ turnStart } endCamp={ lobby.endCamp } endHazard={ lobby.endHazard } onePlayer={ lobby.onePlayer } playerInfo={ playerInfo }/>
 
           {/*///// player board /////*/}
-          <PlayerBoard player={ playerInfo } playerChoice={ playerChoice } questCycle={ lobby.questCycle }/>
+          <PlayerBoard player={ playerInfo } playerChoice={ playerChoice } questCycle={ lobby.questCycle } onePlayer={ lobby.onePlayer }/>
         </div> }
       </div>
     </div>

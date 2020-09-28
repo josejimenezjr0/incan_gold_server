@@ -27,7 +27,8 @@ const Admin = () => {
         <button className="inline-block mt-2 p-1 mx-auto text-white font-bold bg-red-700" onClick={ () => deleteGame(game.room) }>Delete</button>
         <div>Room: { game.room }, Size: { game.size }, Spare: { game.spare }</div>
         <div>Artifiacts: { game.artifacts }, Hazards: { JSON.stringify(game.hazards) }</div>
-        <div>Quest Cycle: { game.questCycle }, Round: { game.round }</div>
+        <div>{ vBool('endCamp', game.endCamp) }, { vBool('endHazard', game.endHazard) }</div>
+        <div>Quest Cycle: { game.questCycle }, Round: { game.round }, { vBool('1Player', game.onePlayer) }</div>
         <div>
           <div>
             <ul className="bg-purple-400">

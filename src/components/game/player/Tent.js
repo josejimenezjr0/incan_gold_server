@@ -48,7 +48,7 @@ const Tent = ({ score, isSpare }) => {
 
   return (
     <div className="bg-blue-500 font-bold p-2 text-center">
-    <p>{isSpare ? 'Spare' : 'Tent Score'}</p>
+    <p>{isSpare ? 'Spare' : 'Tent'}</p>
     <p>{ score }</p>
     { scorePieces }
     </div>

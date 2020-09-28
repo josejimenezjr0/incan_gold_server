@@ -13,19 +13,22 @@ const New = () => {
   }
 
   return (
-    <div className="p-8 flex-col flex-wrap items-center justify-center">
-      <div className="p-2 bg-gray-300">New</div>
-      <div className="flex justify-around mt-2">
-        <div>
-          <p className="inline-block pr-4">Your Name:</p>
-          <input type="text" name="name" placeholder="enter your name" value={ game.name } onChange={ handleInput }/>
-        </div>
-        <div>
-          <p className="inline-block pr-4">Players:</p>
-          <input type="number" name="size" placeholder="3" value={ game.size } onChange={ handleInput }/>
+    <div className="flex justify-center">
+      <div className="w-full max-w-xs mt-8">
+        <div className="shadow-md rounded px-8 pt-6 pb-8">
+          <div className="mb-4">
+            <p className="block text-gray-700 font-bold mb-2">Name</p>
+            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" name="name" type="text" placeholder="enter name" value={ game.name } onChange={ handleInput }/>
+          </div>
+          <div className="mb-4">
+            <p className="block text-gray-700 font-bold mb-2">Players</p>
+            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" name="size" type="number" placeholder="3" value={ game.size } onChange={ handleInput }/>
+          </div>
+          <div className="flex items-center justify-center">
+            <Link className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" to={{ pathname: "/lobby", state: { game: game } }} >Make Game!</Link>
+          </div>
         </div>
       </div>
-      <Link className="inline-block mt-2 p-1 mx-auto bg-green-300" to={{ pathname: "/lobby", state: { game: game } }}>Make Game!</Link>
     </div>
   )
 }

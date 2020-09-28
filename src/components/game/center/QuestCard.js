@@ -1,8 +1,31 @@
 import React from 'react'
 
-const QuestCard = ({ children }) => {
+const ZERO = 'zero'
+const WAIT = 'wait'
+const REVEAL = 'reveal'
+const FLIP = 'flip'
+const CAMP = 'camp'
+const HAZARD = 'hazard'
+
+const QuestCard = ({ children, questCycle, onePlayer }) => {
+  const hide = 'hidden'
+  const waiting = 'bg-yellow-400'
+  const choices = 'bg-blue-800'
+  const flipQuest = 'bg-orange-500'
+  const camp = 'bg-yellow-400 p-4'
+  const hazard = 'bg-red-800 p-4'
+
+  const cycle = {
+    [ZERO]: hide,
+    [WAIT]: waiting,
+    [REVEAL]: choices,
+    [FLIP]: flipQuest,
+    [CAMP]: camp,
+    [HAZARD]: hazard
+  }
+
   return (
-    <div className="bg-blue-400 font-bold m-2 p-2">
+    <div className={`font-bold m-2 p-2 ${cycle[questCycle]} `}>
       { children }
     </div>
   )
