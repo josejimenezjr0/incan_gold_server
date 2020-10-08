@@ -46,12 +46,13 @@ const Round = ({ score , artifacts }) => {
         )
       }
   })
+
+  const isScore = scorePieces.some(piece => piece !== 0)
+
   return (
-    <div className="flex flex-col bg-orange-500 font-bold p-2 text-center">
-      <div>Score</div>
-      <p>{ score }</p>
+    <div className="flex flex-col font-semibold p-1 text-center text-sm">
+      <p className={`${isScore && 'mb-1'}`}>Round</p>
       { scorePieces }
-      <Artifacts artifacts={ artifacts } />
     </div>
   )
 }

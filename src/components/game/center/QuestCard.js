@@ -25,7 +25,7 @@ const QuestCard = ({ children, questCycle, onePlayer }) => {
   }
 
   return (
-    <div className={`font-bold m-2 p-2 ${cycle[questCycle]} `}>
+    <div className={`font-semibold text-sm p-1 mt-1 mb-4 rounded-lg ${cycle[questCycle]}`}>
       { children }
     </div>
   )

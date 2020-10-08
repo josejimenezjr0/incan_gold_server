@@ -36,6 +36,11 @@ const sendChoice = choice => {
   socket.emit('choice', choice)
 }
 
+const choiceToggle = choiceData => {
+  console.log(`choiceToggle - choiceData:`, choiceData)
+  socket.emit('toggleChoice', choiceData)
+}
+
 const startRound = room => {
   console.log('startRound');
   socket.emit('startRound', room)
@@ -52,11 +57,16 @@ const startTurn = room => {
 }
 
 const gameReset = resetGame => {
-  console.log('gameReset')
-  socket.on('forceReset', () => resetGame())
+  socket.on('forceReset', () => {
+    console.log('gameReset')
+    resetGame()
+  })
 }
 
-const disconnect = () => socket.disconnect()
+const disconnect = () => {
+  console.log('disconnect');
+  socket.disconnect()
+}
 
 export default {
   playerInit,
@@ -68,5 +78,6 @@ export default {
   sendChoice,
   startRound,
   revealChoices,
-  startTurn
+  startTurn,
+  choiceToggle
 }

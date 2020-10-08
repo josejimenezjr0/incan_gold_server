@@ -6,18 +6,18 @@ const HAZARD = 'hazard'
 
 
 
-const TempleCard = ({ position, round, roundStart, questCycle }) => {
+const TempleCard = ({ position, round, roundStart, questCycle, sizeWait }) => {
   const flipped = round >= position
   const nextRound = round + 1 === position  
-  const activate = nextRound && (questCycle === ZERO || questCycle === CAMP || questCycle === HAZARD)
+  const activate = (nextRound && sizeWait) && (questCycle === ZERO || questCycle === CAMP || questCycle === HAZARD)
 
   return (
     flipped ?
-    <div className="bg-orange-500 font-bold p-2 m-2">
+    <div className="border-2 border-yellow-300 bg-green-900 text-white text-sm p-1 font-semibold rounded">
       {`TEMPLE ${ position }`}
     </div>
     :
-    <button type="button" disabled={ !activate } className={`${ activate ? 'border-4 border-yellow-300 bg-gray-800 text-white font-bold p-4 m-2' : 'bg-gray-800 text-white text-xs p-1 m-1 opacity-50 cursor-not-allowed'}`} onClick={ roundStart }>
+    <button type="button" disabled={ !activate } className={`${ activate ? 'animate-pulse' : 'opacity-50'} border-2 border-blue-100 bg-green-900 text-white text-sm p-1 font-semibold rounded`} onClick={ roundStart }>
       {`TEMPLE ${ position }`}
     </button>
   )

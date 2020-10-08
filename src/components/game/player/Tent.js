@@ -46,10 +46,11 @@ const Tent = ({ score, isSpare }) => {
       }
   })
 
+  const isScore = scorePieces.some(piece => piece !== 0)
+
   return (
-    <div className="bg-blue-500 font-bold p-2 text-center">
-    <p>{isSpare ? 'Spare' : 'Tent'}</p>
-    <p>{ score }</p>
+    <div className="flex flex-col font-semibold p-1 text-center text-sm">
+    <p className={`${isScore && 'mb-1'}`}>{isSpare ? '' : 'Tent'}</p>
     { scorePieces }
     </div>
   )

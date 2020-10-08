@@ -3,12 +3,15 @@ import { useLocation, useHistory } from 'react-router-dom'
 import io from '../Socket'
 import db from '../db'
 import CenterBoard from './game/center/CenterBoard'
+import TempleBoard from './game/center/TempleBoard'
 import PlayerBoard from './game/player/PlayerBoard'
-import LobbyWait from './game/player/LobbyWait'
 import OpponentsList from './game/opponents/OpponentsList'
 
 const ZERO = 'zero'
+const TORCH = 'Torch'
+const CAMP = 'Camp'
 
+// const Lobby = ({ getNavGame }) => {
 const Lobby = () => {
   const location = useLocation()
   const history = useHistory()
@@ -16,11 +19,12 @@ const Lobby = () => {
   const locationGame = location.state && location.state.game
   const [uuid, setUuid] = useState(null)
   const [lobby, setLobby] = useState({ room: '', players: [], size: 3, questCycle: ZERO, round: 0, quest: [], deck: [] })
-  const [playerInfo, setPlayerInfo] = useState({ name: '', host: false, totalScore: 0, roundScore: 0, playerArtifacts: [], choiceMade: false, choice: null })
+  const [playerInfo, setPlayerInfo] = useState({ name: '', host: false, totalScore: 0, roundScore: 0, playerArtifacts: [], choiceMade: false, choice: 'Torch' })
   
   const updateGame = async game => {
-    console.log('updateGame: ', game)
+    console.log('updateGame: ', game);
     setLobby(game)
+    // getNavGame({ players: game.players.filter(player => player.uuid !== uuid), questCycle: game.questCycle, onePlayer: game.onePlayer, size: game.size })
     try {
       await db.game.put(game)
     } catch (error) {
@@ -28,7 +32,7 @@ const Lobby = () => {
   }
 
   const updatePlayer = async player => {
-    console.log('updatePlayer: ', player)
+    console.log('updatePlayer: ', player);
     setPlayerInfo(player)
     try {
       await db.player.put(player, uuid)
@@ -60,101 +64,64 @@ const Lobby = () => {
     } 
   }
 
-  const clearGame = () => {
-    db.game.clear()
-    db.uuid.clear()
-    db.player.clear()
+  const clearGame = async () => {
+    await db.game.clear()
+    await db.uuid.clear()
+    await db.player.clear()
     history.push('/')
   }
   
   useEffect(() => {
     loadSave()
-
     io.playerInit(locationGame, locationUuid)
+    io.playerUuid((uuid) => saveUuid(uuid))
+    io.gameUpdate(update => updateGame(update))
+    io.playerUpdate(update => updatePlayer(update))
+    io.gameReset(clearGame)
+    return () => io.disconnect()
 
-    io.playerUuid((uuid) => {
-      saveUuid(uuid)
-    })
-
-    io.gameUpdate(update => {
-      updateGame(update)
-    })
-
-    io.playerUpdate(update => {
-      updatePlayer(update)
-    })
-
-    io.gameReset(() => clearGame())
-
-    return () => {
-      io.disconnect()
-    }
   }, [])
 
-  const playerChoice = ({ target: { name } }) => {
-    updatePlayer({ ...playerInfo, choice: name == 'torch', choiceMade: true })
-    io.sendChoice({ uuid: uuid, choice: name === 'torch' })
+  const playerChoice = () => {
+    if(playerInfo.choiceMade === true) return
+    updatePlayer({ ...playerInfo, choiceMade: true })
+    io.sendChoice({ uuid: uuid, choice: playerInfo.choice })
   }
 
-  const roundStart = () => {
-    io.startRound(lobby.room)
+  const toggleChoice = () => {
+    console.log('playerInfo.choice: ', playerInfo.choice);
+    console.log('boolean for choice: ', playerInfo.choice === TORCH ? CAMP : TORCH);
+    updatePlayer({ ...playerInfo, choice: playerInfo.choice === TORCH ? CAMP : TORCH, choiceMade: false })
+    console.log('playerInfo.choice: ', playerInfo.choice);
+    io.choiceToggle({ uuid: uuid, choice: playerInfo.choice === TORCH ? CAMP : TORCH })
   }
 
-  const choicesReveal = () => {
-    io.revealChoices(lobby.room)
-  }
-
-  const turnStart = () => {
-    io.startTurn({ room: lobby.room })
-  }
+  const roundStart = () => io.startRound(lobby.room)
+  const choicesReveal = () => io.revealChoices(lobby.room)
+  const turnStart = () => io.startTurn({ room: lobby.room })
 
   const gamePlayers = lobby.players.filter(player => player.uuid !== uuid).map((player, ind) =>(<OpponentsList key={ ind } player={ player } questCycle={ lobby.questCycle } onePlayer={ lobby.onePlayer }/>))
 
-  const lobbyReady = lobby.players.map((player, ind) => <LobbyWait key={ player.uuid } player={ player } />)
-  const lobbyWaiting = [...Array(lobby.size - lobbyReady.length)].map((_, ind) => <li key={ ind } className="bg-yellow-300 p-2">Waiting...</li>)
-  const lobbyPlayers = [...lobbyReady, ...lobbyWaiting]
+  const sizeWait = lobby.players.length == lobby.size
 
   return (
-    <div className="p-2 flex flex-col flex-wrap">
-
-      {/*///// admin /////*/}
-      <div className="flex p-1 bg-yellow-200 mr-auto">
-        <button className="inline-block p-1 bg-gray-300" to="/" onClick={ clearGame } >Clear Game</button>
-        <div className="p-1">Code: { lobby.room }</div>
-        <div className="p-1">uuid: { uuid && uuid.substring(0, 4) }</div>
-      </div>
-      {/*///// admin /////*/}
-      
-      <div className="p-1 flex flex-col flex-wrap justify-center">
-        { lobby.size != lobbyReady.length ?
-
-        /*///// lobby list /////*/
-        <div className="flex flex-col">
-          <ul className="flex flex-row justify-around">
-            { lobbyPlayers }
-          </ul>
-          <div className="flex bg-orange-600 justify-center mx-auto mt-4">Waiting on all players...</div> 
-          <div className="flex p-2 mt-4 items-center justify-center">
-            Join Code: <span className="p-2 bg-green-400 font-bold">{ lobby.room }</span>
+    <div className="flex justify-center h-screen sm:h-auto">
+      <div className="w-full max-w-sm mt-4 h-full sm:h-auto">
+        <div className="bg-gray-100 shadow-md rounded px-8 pt-6 pb-8 mb-4 h-full sm:h-auto">
+          <div className="flex flex-col pt-2 pb-16 h-full sm:h-auto">
+            <div className={`${sizeWait && 'hidden'} flex justify-between items-center bg-blue-200 text-gray-900 rounded-lg mt-2 px-4`}>
+              <div className="flex p-2 items-center justify-center">
+                Code: <span className="bg-gray-600 text-white tracking-wide font-semibold py-1 px-2 ml-2 rounded">{ lobby.room }</span>
+              </div>
+              <div className="font-semibold underline">{ `Players (${lobby.players.length}/${lobby.size})`}</div>
+            </div>
+            <TempleBoard round={ lobby.round } roundStart={ roundStart } questCycle={ lobby.questCycle } sizeWait={ sizeWait }/>
+            <div className="flex h-full">
+              <PlayerBoard player={ playerInfo } playerChoice={ playerChoice } toggleChoice={ toggleChoice } questCycle={ lobby.questCycle } onePlayer={ lobby.onePlayer }/>
+              <CenterBoard choicesReveal={ choicesReveal } turnStart={ turnStart } game={ lobby } playerInfo={ playerInfo } />
+            </div>
           </div>
-          
         </div>
-
-        :
-
-        /*///// game /////*/
-        <div>
-          {/*///// player list /////*/}
-          <ul className="flex flex-row justify-around">
-            { gamePlayers }
-          </ul>
-
-          {/*///// center board /////*/}
-          <CenterBoard round={ lobby.round } quest={ lobby.quest } roundStart={ roundStart } questCycle={ lobby.questCycle } choicesReveal={ choicesReveal } spare={ lobby.spare } turnStart={ turnStart } endCamp={ lobby.endCamp } endHazard={ lobby.endHazard } onePlayer={ lobby.onePlayer } playerInfo={ playerInfo }/>
-
-          {/*///// player board /////*/}
-          <PlayerBoard player={ playerInfo } playerChoice={ playerChoice } questCycle={ lobby.questCycle } onePlayer={ lobby.onePlayer }/>
-        </div> }
       </div>
     </div>
   )

@@ -1,9 +1,9 @@
 import React from 'react'
 
-const TorchCard = ({ choice, choiceMade, playerChoice }) => {
+const TorchCard = ({ choice, choiceMade, playerChoice, toggleChoice }) => {
   return (
-    <button type="button" name="torch" onClick={ e => playerChoice(e) } className={`focus:outline-none inline-block mx-2 ${ !choiceMade ? 'bg-teal-200 p-1 text-xs' : choice ? 'border-4 border-yellow-300 bg-teal-500 font-bold p-2' : 'bg-teal-200 p-1 text-xs' }`}>
-      TORCH
+    <button type="button" name="torch" onClick={ toggleChoice } className={`${ choice === 'Torch' ? 'bg-teal-200' : 'bg-purple-200' } ${ choiceMade ? 'border-2 border-green-300' : 'border-2 border-gray-600' } text-gray-900 tracking-wide font-bold py-1 mr-1 w-16 rounded focus:outline-none`}>
+      { choice === 'Torch' ? 'Torch' : 'Camp'}
     </button>)
 }
 
