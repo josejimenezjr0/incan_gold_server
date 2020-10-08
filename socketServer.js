@@ -58,6 +58,7 @@ module.exports = (server, games, setGames, httpServer) => {
     return (socket, next) => {
       const uuid = socket.handshake.query.reconnect
       if(uuid) {
+        console.log('uuid: ', uuid);
         if(clientCheck('uuid', uuid)) {
           socket.reset = true
           return next()
@@ -72,10 +73,12 @@ module.exports = (server, games, setGames, httpServer) => {
   io.use(checkServerClient())
 
   io.on("connect", socket => {
+    console.log('socket: ', socket.id);
     const { uuid, id, reset } = socket
 
     // If client needs to be reset emits a force reset command to client socket and stops
     if(reset) {
+      console.log('forceReset');
       socket.emit('forceReset')
       return
     }
@@ -161,6 +164,36 @@ module.exports = (server, games, setGames, httpServer) => {
       console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green submitted choice: }{bgGreen.black.bold  ${choice} }`)
     })
 
+    socket.on("toggleChoice", ({ uuid, choice }) => {
+      console.log('choice: ', choice);
+      const [currentGame] = games.filter(game => game.players.some(player => player.uuid == uuid))
+      if(currentGame.endCamp || currentGame.endHazard) {
+        console.log('endCamp: ', currentGame.endHazard);
+        console.log('endCamp: ', currentGame.endCamp);
+        console.log(`choice shouldn't run`);
+        return
+      }
+
+      const [currentPlayer] = currentGame.players.filter(player => player.uuid == uuid)
+      const { room } = currentGame
+
+      const curPlayerUpdate = { ...currentPlayer, choiceMade: false, choice, toggle: true }
+      console.log('curPlayerUpdate: ', curPlayerUpdate);
+      const keepPlayers = currentGame.players.filter(player => player.uuid !== uuid)
+      const playersUpdate = [...keepPlayers, curPlayerUpdate]
+      const allChoices = playersUpdate.every(player => player.choiceMade)
+      console.log('choice -> allChoices: ', allChoices);
+      const gameUpdate = { ...currentGame, players: playersUpdate, questCycle: WAIT }
+      console.log('choice -> gameUpdate: ', gameUpdate);
+
+      io.to(room).emit("update", hideInfo(gameUpdate))
+      socket.emit("playerUpdate", playerInfo(gameUpdate, uuid))
+      console.log('gameUpdate: ', gameUpdate);
+
+      updateGames(gameUpdate, room)
+      console.log(chalk`{bgGreen.black.bold  ${uuid.substring(0,4)} }{green cleared their choice. }`)
+    })
+
     socket.on("revealChoices", room => {
       const [currentGame] = games.filter(game => game.room == room)
       if(currentGame.endCamp || currentGame.endHazard) {
@@ -186,6 +219,7 @@ module.exports = (server, games, setGames, httpServer) => {
 
       const roundUpdate = startRound(currentGame)
       const gameUpdate = startTurn(roundUpdate)
+      console.log('Round gameUpdate: ', gameUpdate);
 
       io.to(room).emit("update", hideInfo(gameUpdate))
       gameUpdate.players.map(player => {
