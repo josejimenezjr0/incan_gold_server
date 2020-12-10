@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useHistory } from 'react-router-dom'
-import db from '../db'
+import { db } from '../db'
 import OpponentsList from './game/opponents/OpponentsList'
 import LobbyWait from './game/opponents/LobbyWait'
 

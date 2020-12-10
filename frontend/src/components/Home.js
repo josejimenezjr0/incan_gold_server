@@ -1,10 +1,16 @@
-import React, { useEffect, useState } from 'react'
-import { Redirect, useHistory } from 'react-router-dom'
+import React, { useEffect, useState, useContext } from 'react'
+import { useHistory } from 'react-router-dom'
 import axios from 'axios'
-import db from '../db'
+import { db, db2 } from '../db'
+import { GameContext } from '../App'
+import { actionGenerators } from '../redux'
 
 
-const Home = ({ loadSave }) => {
+const Home = () => {
+  const { state, dispatch } = useContext(GameContext)
+  /**
+   * checks local dexieDB for a saved game and redirects to Lobby componenet if there is a saved game
+   */
   const checkDB = async () => {
     try {
       const storedUuid = await db.table('uuid').toArray()
@@ -15,19 +21,8 @@ const Home = ({ loadSave }) => {
       } else {
         console.log('Missing some or all info, starting new');
       }
-      // if(storedUuid[0] && storedGame[0] && storedPlayer[0]) {
-      //   console.log('???????');
-      //   // setLoadSave({ game: { uuid: storedUuid[0].uuid, player: storedPlayer[0], game: storedGame[0] } })
-      //   setLoadSave([storedUuid[0].uuid, storedGame[0], storedPlayer[0]])
-      //   // setLoadSave({ show: true, gameSave: { uuid: storedUuid[0].uuid, player: storedPlayer[0], game: storedGame[0] } })
-      //   // history.push({ pathname:'/lobby', state: { uuid: storedUuid[0], game: storedGame[0] } })
-      //   // history.push({ pathname:'/lobby', state: { uuid: storedUuid[0], game: storedGame[0] } })
-      //   // history.push('/')
-      // } else {
-      //   // setLoadSave({ show: false })
-      //   console.log('Missing some or all info, starting new');
-      // }
-      } catch (error) {
+    } catch (error) {
+      console.log('error: ', error);
     } 
   }
 
@@ -35,99 +30,161 @@ const Home = ({ loadSave }) => {
     checkDB()
   }, [])
 
-
-  // console.log('loadSave: ', loadSave);
-  // console.log('show: ', show);
-  // console.log('Home - gameSave: ', gameSave);
   const history = useHistory()
   const [ game, setGame ] = useState({ name: '', code: '', size: '', init: true, join: false })
+  const [ makeJoinInfo, setMakeJoinInfo ] = useState({ name: '', code: '', size: '', init: true, join: false })
   const [joinInfo, setJoinInfo] = useState({ found: true, checking: false })
 
-  // if(show) {
-  //   console.log('show: ', show);
-  //   console.log('history: ', history);
-  //   // history.push('/lobby')
-  //   history.push({ pathname:'/lobby', state: gameSave })
-  // }
-  // else {
-  //   console.log('no save');
-  // }
-
-  // if(loadSave.length !== 0) {
-  //   console.log('Home redirect');
-  //   // history.push('/lobby')
-  //   // history.push({ pathname:'/lobby', state: { uuid: loadSave[0], game: loadSave[1] } })
-  //   <Redirect to={ { pathname: "/lobby", state: { uuid: loadSave[0], game: loadSave[1] } } }/>
-  // }
-  // else {
-  //   console.log('no save');
-  // }
-
+  /**
+   * handle all inputs by setting state based on name and value pairing
+   */
   const handleInput = e => {
     const { target: { name, value } } = e
     setGame(({ ...game, [name]: value }))
+    setMakeJoinInfo(prev => ({ ...prev, [name]: value }))
   }
 
+  /**
+   * Verifies room is available to join. Sets flag for loading while waiting for room response. Clears checking flag on response
+   */
   const checkJoin = async room => {
-    setJoinInfo({ found: true, checking: true })
+    setJoinInfo(prev => ({ ...prev, checking: true }))
     try {
-      const res = await axios.post('/checkjoin', { room: room })
-      setJoinInfo({ found: res.data, checking: false })
+      const res = await axios.post('http://localhost:4001/checkjoin', { room })
+      setJoinInfo(prev => ({ ...prev, found: res.data, checking: false }))
       if(res.data) history.push({ pathname: "/lobby", state: { game: game } })
+      //////////////////////////////////
+      //change to use context/reducer
+      //////////////////////////////////
     } catch (error) {
       console.log(error)
     }
   }
 
+  /**
+   * Pushed to Lobby component with game passed in state
+   */
   const makeGame = () => {
+    dispatch(actionGenerators.makeJoin(makeJoinInfo))
     history.push({ pathname: "/lobby", state: { game: game } })
   }
 
+  /**
+   * handles toggle between New button and Join button. Sets game join state either true or false based on selection
+   * Also clears checking state since a new request will be made upon changes
+   */
   const toggleJoin = e => {
-    setJoinInfo({ found: true, checking: false })
-    const { target: { name } } = e
-    setGame({ ...game, join: name === 'join' })
+    //reset any searching for a room UI if the user toggles between making or joining
+    setJoinInfo(prev => ({ ...prev, found: true, checking: false }))
+    setGame({ ...game, join: e.target.name === 'join' })
+    setMakeJoinInfo(prev => ({ ...prev, join: e.target.name === 'join' }))
   }
 
-  const allInfo = game.join ? (game.name === '') || (game.code === '') : (game.name === '') || (isNaN(game.size) || game.size === '')
+  //verify all necessary fields are not empty in order to enable Make or Join button
+  const allInfo = (game.join || makeJoinInfo.join) ?
+    //if joining instead of making make sure name and code are filled
+    (game.name === '' || makeJoinInfo.name === '') || (game.code === '' || makeJoinInfo.code === '')
+    :
+    //otherwise make sure name and number of players is filled. Number of players should only be a number.
+    (game.name === '' || makeJoinInfo.name === '') || ((isNaN(game.size) || isNaN(makeJoinInfo.size)) || (game.size === '' || makeJoinInfo.size === ''))
 
   return (
     <div className="flex justify-center">
       <div className="w-full max-w-xs mt-8">
         <div className="shadow-md rounded px-8 pt-6 pb-8 mb-4">
           <div className="flex justify-around mb-6">
+            {/* New button */}
             <div className="mb-4">
-              <button className={`${ !game.join ? 'bg-blue-400 cursor-default' : 'text-blue-500 hover:bg-blue-200 hover:text-blue-900 focus:shadow-outline'} text-gray-900 tracking-wide font-bold py-2 px-4 rounded focus:outline-none`} name="new" onClick={ toggleJoin }>New</button>
+              <button
+                name="new"
+                onClick={ toggleJoin }
+                className={`${ !(game.join && makeJoinInfo.join) ? 'bg-blue-400 cursor-default' : 'text-blue-500 hover:bg-blue-200 hover:text-blue-900 focus:shadow-outline'} text-gray-900 tracking-wide font-bold py-2 px-4 rounded focus:outline-none`}
+              >
+                New
+              </button>
             </div>
+            {/* Join button */}
             <div className="mb-4">
-              <button className={`${ game.join ? 'bg-blue-400 cursor-default' : 'text-blue-500 hover:bg-blue-200 hover:text-blue-900 focus:shadow-outline'} text-gray-900 tracking-wide font-bold py-2 px-4 rounded focus:outline-none`} name="join" onClick={ toggleJoin }>Join</button>
+              <button 
+                name="join"
+                onClick={ toggleJoin }
+                className={`${ (game.join && makeJoinInfo.join) ? 'bg-blue-400 cursor-default' : 'text-blue-500 hover:bg-blue-200 hover:text-blue-900 focus:shadow-outline'} text-gray-900 tracking-wide font-bold py-2 px-4 rounded focus:outline-none`} 
+              >
+                Join
+              </button>
             </div>
           </div>
           <div>
+            {/* Name text field */}
             <div className="mb-4">
               <p className="block text-gray-700 font-bold mb-2">Name</p>
-              <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" name="name" type="text" placeholder="enter name" value={ game.name } onChange={ handleInput }/>
+              <input
+                name="name"
+                value={ game.name }
+                onChange={ handleInput }
+                type="text" 
+                placeholder="enter name"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              />
             </div>
+            {/* Number of players(size) or code text field */}
             <div className="mb-4">
-              <p className="block text-gray-700 font-bold mb-2">{ game.join ? 'Code' : 'Players' }</p>
-              { game.join ? 
-                <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text" name="code" placeholder="enter code" value={ game.code } onChange={ handleInput }/>
+              {/* game.join toggles based on new or join buttons */}
+              <p className="block text-gray-700 font-bold mb-2">{ (game.join && makeJoinInfo.join) ? 'Code' : 'Players' }</p>
+              { 
+                (game.join && makeJoinInfo.join) ?
+                <input
+                  name="code"
+                  value={ game.code }
+                  onChange={ handleInput }
+                  type="text"
+                  placeholder="enter code"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                />
                 :
-                <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" name="size" type="text" placeholder="3 - 8 players" value={ game.size } onChange={ handleInput }/> }
-                
+                <input
+                  name="size"
+                  value={ game.size }
+                  onChange={ handleInput }
+                  type="text"
+                  placeholder="3 - 8 players"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                /> 
+              }  
             </div>
             <div className="flex items-center justify-center">
-            { game.join ? 
-              <button className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${allInfo && 'opacity-50' }`} disabled={ allInfo } onClick={ () => checkJoin(game.code) }>Join Game!</button>
+            {/* Make or Join buttons are disabled and greyed out if all required fields aren't filled */}
+            { 
+              (game.join && makeJoinInfo.join) ? 
+              <button
+                onClick={ () => checkJoin(game.code) }
+                disabled={ allInfo }
+                className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${allInfo && 'opacity-50' }`}
+              >
+                Join Game!
+              </button>
               :
-              <button className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${allInfo && 'opacity-50' }`} disabled={ allInfo } onClick={ makeGame }>Make Game!</button> }
-              
+              <button
+                onClick={ makeGame }
+                disabled={ allInfo }
+                className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${allInfo && 'opacity-50' }`}
+              >
+                Make Game!
+              </button> 
+            }  
             </div>
           </div>
         </div>
+        {/* Banner for checking on room and if no room found showing error message */}
         <div className="flex items-center justify-center">
-          { !joinInfo.found && <div className={`bg-red-400 text-gray-900 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}>Game not found.</div> }
-          { joinInfo.checking && <div className={`bg-orange-300 text-gray-900 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}>Searching...</div> }
+          { 
+            //room not found error message
+            !joinInfo.found && <div className={`bg-red-400 text-gray-900 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}>Game not found.</div>
+          }
+          {
+            //searching banner while checking on room
+            joinInfo.checking && <div className={`bg-orange-300 text-gray-900 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}>Searching...</div> 
+          }
         </div>
       </div>
     </div>

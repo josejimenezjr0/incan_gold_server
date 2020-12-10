@@ -22,18 +22,20 @@ module.exports = (server, games, setGames, httpServer) => {
     return result
   }
 
-  const gameCheck = (filter, value) => {
-    const found = games.filter(game => game[filter] == value)
-    const result = games.length === 0 || found.length === 0
-    return result
-  }
+  // const gameCheck = (filter, value) => {
+  //   const found = games.filter(game => game[filter] == value)
+  //   const result = games.length === 0 || found.length === 0
+  //   return result
+  // }
 
-  httpServer.post('/checkjoin', (req, res) => {
-    console.log('req.body.room.toUpperCase(): ', req.body.room.toUpperCase());
-    res.send(!gameCheck('room', req.body.room.toUpperCase()))
+  // httpServer.post('/checkjoin', (req, res) => {
+  //   console.log('req.body.room.toUpperCase(): ', req.body.room.toUpperCase());
+  //   res.send(!gameCheck('room', req.body.room.toUpperCase()))
+  // })
+
+  const io = socketio(server, {
+    transports: ['websocket']
   })
-
-  const io = socketio(server)
 
   const updateGames = (update, room) => {
     const keepGames = games.filter(game => game.room !== room)

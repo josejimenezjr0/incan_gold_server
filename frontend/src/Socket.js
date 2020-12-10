@@ -2,11 +2,18 @@ import io from 'socket.io-client'
 let socket
 
 const playerInit = (game, uuid) => {
+  console.log('player init game: ', game);
   if(game.init) {
-    socket = io('http://192.168.86.21:4001')
+    console.log('if(game.init)');
+    socket = io('http://localhost:4001', {
+      transports: ['websocket']
+    })
     socket.emit('create', game)
   } else {
-    socket = io(`http://192.168.86.21:4001?reconnect=${uuid}`)
+    console.log(`reconnect from playerInit with uuid: ${uuid}`);
+    socket = io(`http://localhost:4001?reconnect=${uuid}`, {
+      transports: ['websockets']
+    })
   }
 }
 
